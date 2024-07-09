@@ -29,8 +29,11 @@ public class Player1 {
 	}
 
 	/**Constructor of Player1 with *all* modifiers
-	 * @param playerName passed as an argument from user
-	 * 
+	 * @param playerName passed as an argument from user or loaded from save file
+	 * @param day intitialized to 0 or loaded from save file
+	 * @param NRG initialized to 10.0 or loaded from save file
+	 * @param nrgMax initialized to 10.0 or loaded from save file
+	 * @param credits intitialized to 100.0 or loaded from save file
 	 */
 	public Player1(String playerName, int day, double NRG, int nrgMax, double credits) {
 		setPlayerName(playerName);

@@ -1,6 +1,6 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 6/18/2024
+ * Last Updated: 7/9/2024
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * */
 
@@ -8,6 +8,7 @@ package sunflowerSimulator;
 
 import java.util.Random;
 import java.util.Scanner;
+import java.util.ArrayList;
 
 /**
  * Main game executed here.
@@ -19,7 +20,8 @@ public class sunflowerSimulator {
 	 * Day 0 notes: We'll start with walking through a newgame/tutorial mode to flesh out ideas.
 	 * Day 1 notes: looping logic for action menu, create a class.
 	 * Day 2 notes: write a few dreams in txt files, finish up accessor/mutator methods, get main to run
-	 * Day 3 notes: player1 class tostring method, 2nd action menu choice
+	 * Day 3 notes: player1 class toString method, 2nd action menu choice
+	 * Day 4 notes: shop menu, 5 more dream.txt files, 3rd action menu choice (backpack), sunflower class?
 	 * @param args NOT USED
 	 */
 	public static void main(String[] args) {
@@ -100,6 +102,8 @@ public class sunflowerSimulator {
 			
 			
 			//Shop Menu display, WIP 6/27/2024
+			//Add random chance of 4 items
+			//Deduct cost from credits
 			do
 			{
 			System.out.print("0. Exit Shop\n");
@@ -114,27 +118,48 @@ public class sunflowerSimulator {
 				//Take choice from user into branch
 				case '0': 
 					break;
+				//Placeholder price modifications. When cost is added to item classes, change to implement credit deductions
 				case '1':
 					System.out.println("Item " + shopMenuChoice + " purchased! ");
+					System.out.println("Credits: " + (player.getCredits() - 5));
 					break;
 				case '2':
 					System.out.println("Item " + shopMenuChoice + " purchased! ");
+					System.out.println("Credits: " + (player.getCredits() - 10));
 					break;
 				case '3':
 					System.out.println("Item " + shopMenuChoice + " purchased! ");
+					System.out.println("Credits: " + (player.getCredits() - 15));
 					break;
 				case '4':
 					System.out.println("Item " + shopMenuChoice + " purchased! ");
+					System.out.println("Credits: " + (player.getCredits() - 20));
 					break;
 				default:
 					System.out.println("Invalid choice! Try again, silly. :)");
 				} //end shop menu switch
 			} //end do-while loop for shop menu
 			while (shopMenuChoice != '0');
+		case '6':
+			System.out.println("You decide to take a look-see in your standard grey bag.");
+			System.out.println("Looks like there's something inside! Check your backpack to see what " +
+					"you're working with.");
+			char backpackChoice = '1';
+			do {
+			//Create a new arraylist for inventory and add tutorial sunflower.
+				MammothSunflower mammothSunflower1 = new MammothSunflower("Seed", 1, 10, 1, 5);
+				ArrayList<Object> inventory = new ArrayList<>();
+				inventory.add(mammothSunflower1);
+			//Display contents of bag, for loop through array of inventory items, return to menu
+			}
+			while (backpackChoice != '0');
+		default:
+			System.out.println("Invalid choice! Try again, silly. :)");
 		} //end action menu switch
-		} //end do-while loop 
-		while (actionMenuChoice != '0');
-		//Loop currently terminates when going to bed, never progressing to the next day. Fix later: 6/27/2024
+		 //end do-while loop 
+		}
+		while (actionMenuChoice != '0' || (choice.charAt(0) == 'N' || choice.charAt(0) == 'n'));
+		//Loop currently terminates when going to bed and progressing to the next day 7/9/2024
 		//Close the scanner
 		scanner.close();
 		
