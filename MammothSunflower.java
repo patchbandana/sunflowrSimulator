@@ -26,7 +26,7 @@ public class MammothSunflower {
 	
 	
 	/**Constructs a new MammothSunflower object
-	 * @param growthStage "Seed", "Seedling", "Bloomed", "Matured", or "Whithered"
+	 * @param growthStage "Seed", "Seedling", "Bloomed", "Matured", or "Withered"
 	 * @param daysPlanted increments one day at a time, initializes at 1
 	 * @param durability decrements with negative events, very sturdy flower
 	 * @param nRGRestored only when in "Seed" form
@@ -101,4 +101,28 @@ public class MammothSunflower {
 	public void setCost(double cost) {
 		this.cost = cost;
 	}
+	
+	/**Returns true if the seed is planted.
+	 * @return true if seed is planted, return false if not planted
+	 */
+	public boolean isPlanted() {
+		if (getDaysPlanted() > 0)
+		{
+			return true;
+		}
+		else 
+			return false;
+	}
+	
+	/**
+	 * To string method WIP, for now just displays every method we have so far in a legible way
+	 * @return a string representation of this mammoth sunflower
+	 */
+	@Override
+	public String toString() {
+		return "\nMammoth Sunflower " + getGrowthStage() + ":\nDays Planted: " + getDaysPlanted()
+				+ "\nDurability: " + getDurability() + "\nNRG Restored: " + getNRGRestored() +
+				"\nCost: " + getCost() + "\n";
+	}
+	
 }
