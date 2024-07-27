@@ -1,6 +1,6 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 7/10/2024
+ * Last Updated: 7/27/2024
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * */
 
@@ -8,6 +8,9 @@ package sunflowerSimulator;
 
 import java.util.Random;
 import java.util.Scanner;
+
+import typesOfFlowers.*;
+
 import java.util.ArrayList;
 
 /**
@@ -23,6 +26,8 @@ public class sunflowerSimulator {
 	 * Day 3 notes: player1 class toString method, 2nd action menu choice
 	 * Day 4 notes: shop menu, 5 more dream.txt files, 3rd action menu choice (backpack), sunflower class?
 	 * Day 5 notes: backpack menu, iterating across arraylist review, mammothsunflower forms
+	 * Day 6 notes: the abstract class (one class extended) 7/24/2024
+	 * 
 	 * @param args NOT USED
 	 */
 	public static void main(String[] args) {
@@ -141,6 +146,7 @@ public class sunflowerSimulator {
 				} //end shop menu switch
 			} //end do-while loop for shop menu
 			while (shopMenuChoice != '0');
+		break;
 		case '6':
 			System.out.println("You decide to take a look-see in your standard grey bag.");
 			System.out.println("Looks like there's something inside! Check your backpack to see what " +
@@ -148,13 +154,14 @@ public class sunflowerSimulator {
 			char backpackChoice = '1';
 			do {
 			//Create a new arraylist for inventory and add tutorial sunflower.
-				MammothSunflower mammothSunflower1 = new MammothSunflower("Seed", 0, 10, 1, 5);
+				MammothSunflower mammothSunflower1 = new MammothSunflower("MammothSunflower", "Seed", 0, 10, 1, 5);
 				ArrayList<Object> inventory = new ArrayList<>();
 				inventory.add(mammothSunflower1);
-				inventory.add(new MammothSunflower("Seedling", 2, 9, 0, 6));
-				inventory.add(new MammothSunflower("Bloomed", 4, 8.33, 0, 35));
-				inventory.add(new MammothSunflower("Matured", 5, 7, 0, 50));
-				inventory.add(new MammothSunflower("Withered", 10, 0, 0, 1));
+				inventory.add(new MammothSunflower("Mammoth Sunflower", "Sapling", 2, 9, 0, 6));
+				inventory.add(new MammothSunflower("Mammoth Sunflower", "Bloomed", 4, 8.33, 0, 35));
+				inventory.add(new MammothSunflower("Mammoth Sunflower", "Matured", 5, 7, 0, 50));
+				inventory.add(new MammothSunflower("Mammoth Sunflower", "Withered", 10, 0, 0, 1));
+				inventory.add(new MammothSunflower("Mammoth Sunflower", "Mutated", 7, 20, 0, 200));
 				System.out.println(inventory);
 				backpackChoice = '0';
 			//Display contents of bag, for loop through array of inventory items, return to menu
