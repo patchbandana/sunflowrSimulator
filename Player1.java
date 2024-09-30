@@ -25,7 +25,7 @@ public class Player1 {
 	 * @param playerName passed as an argument from user
 	 */
 	public Player1(String playerName) {
-		setPlayerName(playerName);
+		setPlayerName(playerName); 
 	}
 
 	/**Constructor of Player1 with *all* modifiers
