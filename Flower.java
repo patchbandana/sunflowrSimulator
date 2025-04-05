@@ -4,7 +4,7 @@
  * Encapsulates the general idea of a flower.
  * Flowers will inherit code from this superclass for use in future/smaller classes
  */
-package typesOfFlowers;
+package sunflowrSimulator;
 
 /**
 * The Flower abstract class will encapsulate Flower objects, each holding different stats

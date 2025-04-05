@@ -2,7 +2,7 @@
  * 2024-07-09
  * Description: MammothSunflower class. The first seed you start with. WIP
  */
-package typesOfFlowers;
+package sunflowrSimulator;
 
 /**
  * The MammothSunflower class will create MammothSunflower objects, each holding different stats
@@ -61,7 +61,6 @@ public class MammothSunflower extends Flower {
 	 */
 	@Override
 	public String toString() {
-		return super.toString() + "NRG Restored if eaten: " + getNRGRestored() + "\n"; 
+	    return "🌻 Mammoth Sunflower (Seed)";
 	}
-	
 }
