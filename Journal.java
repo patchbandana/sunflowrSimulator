@@ -1,5 +1,4 @@
-/* 
- * Journal class for handling save/load functionality
+ /* Journal class for handling save/load functionality
  * Added to sunflowrSimulator package
  */
 package sunflowrSimulator;
@@ -8,6 +7,8 @@ import java.io.*;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Journal {
     private static final String SAVE_DIRECTORY = "saves/";
@@ -89,6 +90,38 @@ public class Journal {
                     writer.write("\n");
                 }
                 // Add other item types here as game expands
+            }
+            
+            // Write garden plots
+            writer.write("[GARDEN_PLOTS]\n");
+            List<gardenPlot> gardenPlots = player.getGardenPlots();
+            writer.write("PlotCount=" + gardenPlots.size() + "\n");
+            
+            for (int i = 0; i < gardenPlots.size(); i++) {
+                gardenPlot plot = gardenPlots.get(i);
+                writer.write("Plot=" + i + "," + 
+                            plot.isWatered() + "," + 
+                            plot.isWeeded() + "," + 
+                            plot.isFertilized() + "," +
+                            plot.getSoilQuality() + "\n");
+                
+                // If the plot has a flower, save that too
+                if (plot.isOccupied()) {
+                    Flower flower = plot.getPlantedFlower();
+                    writer.write("PlotFlower=" + i + "," +
+                                flower.getName() + "," +
+                                flower.getGrowthStage() + "," +
+                                flower.getDaysPlanted() + "," +
+                                flower.getDurability() + "," +
+                                flower.getCost());
+                    
+                    // Add NRG restored if it's a MammothSunflower
+                    if (flower instanceof MammothSunflower) {
+                        writer.write("," + ((MammothSunflower) flower).getNRGRestored());
+                    }
+                    
+                    writer.write("\n");
+                }
             }
             
             // Write journal entries section
@@ -384,5 +417,30 @@ public class Journal {
         String filename = SAVE_DIRECTORY + playerName + ".txt";
         File saveFile = new File(filename);
         return saveFile.exists();
+    }
+    
+    /**
+     * Resets a player's save file but keeps the player name
+     * This completely wipes out the old save and replaces it with a fresh one
+     * 
+     * @param player The new Player1 object (should be freshly created with just the name preserved)
+     * @return true if successful, false otherwise
+     */
+    public static boolean resetGame(Player1 player) {
+        // Make sure the saves directory exists
+        File directory = new File(SAVE_DIRECTORY);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+        
+        // Delete existing save file if it exists
+        String filename = SAVE_DIRECTORY + player.getName() + ".txt";
+        File saveFile = new File(filename);
+        if (saveFile.exists()) {
+            saveFile.delete();
+        }
+        
+        // Create a fresh save with the new player
+        return saveGame(player);
     }
 }
