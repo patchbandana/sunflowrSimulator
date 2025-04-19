@@ -1,7 +1,6 @@
  /* Journal class for handling save/load functionality
  * Added to sunflowrSimulator package
  */
-package sunflowrSimulator;
 
 import java.io.*;
 import java.util.*;

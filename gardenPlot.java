@@ -2,7 +2,7 @@
  * Description: Garden Plot class for the sunflowrSimulator
  * Represents a single plot of land where flowers can be planted
  */
-package sunflowrSimulator;
+
 
 public class gardenPlot {
     // Current plant in this garden plot

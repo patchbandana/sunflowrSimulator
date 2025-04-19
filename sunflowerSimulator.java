@@ -4,7 +4,6 @@
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * */
 
-package sunflowrSimulator;
 
 import java.util.Random;
 import java.util.Scanner;
@@ -115,7 +114,7 @@ public class sunflowerSimulator {
                                 System.out.println("You wake up feeling inspired.");
                                 Journal.addJournalEntry(player, "Had a strange dream about the garden.");
                             } else {
-                                System.out.println("\nYou wake up feeling refreshed and rested. It's a new day! :D");
+                                System.out.println("\nYou feel refreshed. It's a new day! :D");
                                 Journal.addJournalEntry(player, "Slept soundly through the night.");
                             }
                             
