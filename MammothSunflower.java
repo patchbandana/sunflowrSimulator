@@ -2,7 +2,7 @@
  * 2024-07-09
  * Description: MammothSunflower class. The first seed you start with. WIP
  */
-package sunflowrSimulator;
+
 
 /**
  * The MammothSunflower class will create MammothSunflower objects, each holding different stats

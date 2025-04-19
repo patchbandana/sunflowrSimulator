@@ -4,7 +4,7 @@
  * 
  */
 
-package sunflowrSimulator;
+
 
 // Player1.java
 import java.util.ArrayList;
