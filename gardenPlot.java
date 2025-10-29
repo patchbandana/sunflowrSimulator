@@ -110,6 +110,7 @@ public class gardenPlot {
     
     /**
      * Advances the day for this garden plot, grows the plant if conditions are met
+     * Growth is now influenced by care (watering/weeding) and flower difficulty
      * @return true if the plant grew, false otherwise
      */
     public boolean advanceDay() {
@@ -123,42 +124,86 @@ public class gardenPlot {
         // Increment days planted
         plantedFlower.setDaysPlanted(plantedFlower.getDaysPlanted() + 1);
         
-        // Check if conditions are right for growth
-        boolean canGrow = isWatered && isWeeded;
+        // Get flower difficulty to adjust growth chances
+        int difficulty = FlowerRegistry.getFlowerDifficulty(plantedFlower.getName());
+        if (difficulty == -1) {
+            difficulty = 3; // Default to medium if not found
+        }
         
-        // Growth logic based on current stage and conditions
+        // Calculate base growth chance (harder flowers = lower base chance)
+        // Difficulty 1: 85% base, Difficulty 5: 45% base
+        double baseGrowthChance = 0.95 - (difficulty * 0.10);
+        
+        // Modify growth chance based on care
+        double growthChance = baseGrowthChance;
+        
+        if (isWatered) {
+            growthChance += 0.30; // +30% if watered
+        } else {
+            growthChance -= 0.25; // -25% if not watered
+        }
+        
+        if (isWeeded) {
+            growthChance += 0.15; // +15% if weeded
+        } else {
+            growthChance -= 0.10; // -10% if weedy
+        }
+        
+        if (isFertilized) {
+            growthChance += 0.20; // +20% if fertilized
+        }
+        
+        // Clamp between 10% and 99%
+        growthChance = Math.max(0.10, Math.min(0.99, growthChance));
+        
+        // Roll for growth
+        boolean shouldGrow = Math.random() < growthChance;
+        
+        // Growth logic based on current stage
         String currentStage = plantedFlower.getGrowthStage();
         int daysPlanted = plantedFlower.getDaysPlanted();
+        boolean didGrow = false;
         
-        if (canGrow) {
-            // Growth based on current stage and days planted
+        if (shouldGrow) {
+            // Progress to next stage if enough days have passed
             if (currentStage.equals("Seed") && daysPlanted >= 3) {
                 plantedFlower.setGrowthStage("Seedling");
-                return true;
+                didGrow = true;
             } else if (currentStage.equals("Seedling") && daysPlanted >= 7) {
                 plantedFlower.setGrowthStage("Bloomed");
-                return true;
+                didGrow = true;
             } else if (currentStage.equals("Bloomed") && daysPlanted >= 12) {
                 plantedFlower.setGrowthStage("Matured");
-                return true;
+                didGrow = true;
             } else if (currentStage.equals("Matured") && daysPlanted >= 20) {
-                // Check if flower withers or becomes special
-                if (Math.random() > 0.9 && isFertilized) {
+                // Check if flower mutates or withers
+                // Higher difficulty flowers have better mutation chance
+                double mutationChance = 0.05 + (difficulty * 0.02);
+                
+                if (isFertilized) {
+                    mutationChance *= 2; // Double chance if fertilized
+                }
+                
+                if (Math.random() < mutationChance) {
                     plantedFlower.setGrowthStage("Mutated");
                 } else {
                     plantedFlower.setGrowthStage("Withered");
                 }
-                return true;
+                didGrow = true;
             }
-        } else {
-            // Plant might wither if not cared for
-            if (!isWatered && Math.random() > 0.7) {
-                plantedFlower.setDurability(plantedFlower.getDurability() - 1);
+        } else if (!isWatered) {
+            // Plant might take damage if not cared for
+            // Harder flowers are more resilient
+            double damageChance = 0.30 - (difficulty * 0.04);
+            
+            if (Math.random() < damageChance) {
+                double currentDurability = plantedFlower.getDurability();
+                plantedFlower.setDurability(currentDurability - 1);
                 
-                // If durability reaches 0, plant withers
+                // If durability reaches 0, plant withers prematurely
                 if (plantedFlower.getDurability() <= 0) {
                     plantedFlower.setGrowthStage("Withered");
-                    return true;
+                    didGrow = true; // Changed state, so return true
                 }
             }
         }
@@ -166,9 +211,13 @@ public class gardenPlot {
         // Reset daily states
         this.isWatered = false;
         this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing
-        this.isFertilized = isFertilized && Math.random() > 0.5; // 50% chance of fertilizer fading
         
-        return false;
+        // Fertilizer has chance to fade each day
+        if (this.isFertilized && Math.random() > 0.5) {
+            this.isFertilized = false;
+        }
+        
+        return didGrow;
     }
     
     /**
