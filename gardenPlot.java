@@ -1,6 +1,9 @@
 /* 
  * Description: Garden Plot class for the sunflowrSimulator
  * Represents a single plot of land where flowers can be planted
+ * 
+ * BUG FIX: Added setter methods for watered, weeded, and fertilized states
+ * This allows the Journal save/load system to properly restore plot states
  */
 
 
@@ -45,6 +48,15 @@ public class gardenPlot {
         flower.setDaysPlanted(1);
         this.plantedFlower = flower;
         return true;
+    }
+    
+    /**
+     * BUG FIX: Force plants a flower regardless of growth stage
+     * This is used by the save/load system to restore planted flowers
+     * @param flower The flower to force plant
+     */
+    public void forcePlantFlower(Flower flower) {
+        this.plantedFlower = flower;
     }
     
     /**
@@ -106,6 +118,30 @@ public class gardenPlot {
         
         this.isFertilized = true;
         return true;
+    }
+    
+    /**
+     * BUG FIX: Directly sets the watered state (for save/load system)
+     * @param watered The watered state to set
+     */
+    public void setWatered(boolean watered) {
+        this.isWatered = watered;
+    }
+    
+    /**
+     * BUG FIX: Directly sets the weeded state (for save/load system)
+     * @param weeded The weeded state to set
+     */
+    public void setWeeded(boolean weeded) {
+        this.isWeeded = weeded;
+    }
+    
+    /**
+     * BUG FIX: Directly sets the fertilized state (for save/load system)
+     * @param fertilized The fertilized state to set
+     */
+    public void setFertilized(boolean fertilized) {
+        this.isFertilized = fertilized;
     }
     
     /**
