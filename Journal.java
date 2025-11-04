@@ -1,8 +1,10 @@
 /* Journal class for handling save/load functionality
  * Added to sunflowrSimulator package
  * 
- * COMPLETE REWRITE with debugging output to track issues
- * This version prints detailed messages to help identify where save/load fails
+ * UPDATES:
+ * - Added flower pot tracking and save/load
+ * - Added hasBuiltExtraPlot tracking
+ * - Flower pots in inventory are now saved and loaded
  */
 
 import java.io.*;
@@ -19,13 +21,13 @@ public class Journal {
     
     /**
      * Helper class to store plot information during load process
-     * This is a static nested class so it can be used with HashMap
      */
     private static class PlotData {
         boolean watered;
         boolean weeded;
         boolean fertilized;
         String soilQuality;
+        boolean isFlowerPot; // NEW: Track if this is a flower pot
         String[] flowerData;
         
         PlotData() {
@@ -33,6 +35,7 @@ public class Journal {
             this.weeded = true;
             this.fertilized = false;
             this.soilQuality = "Average";
+            this.isFlowerPot = false;
             this.flowerData = null;
         }
     }
@@ -85,12 +88,15 @@ public class Journal {
             writer.write("NRG=" + player.getNRG() + "\n");
             writer.write("Credits=" + player.getCredits() + "\n");
             writer.write("Day=" + player.getDay() + "\n");
+            writer.write("FlowerPotsCrafted=" + player.getFlowerPotsCrafted() + "\n");
+            writer.write("HasBuiltExtraPlot=" + player.hasBuiltExtraPlot() + "\n");
             
             LocalDateTime now = LocalDateTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             writer.write("SaveDate=" + now.format(formatter) + "\n");
             
             System.out.println("[SAVE] Saved player stats: Day " + player.getDay() + ", NRG " + player.getNRG() + ", Credits " + player.getCredits());
+            System.out.println("[SAVE] Flower pots crafted: " + player.getFlowerPotsCrafted());
             
             // Write inventory items
             writer.write("[INVENTORY]\n");
@@ -113,6 +119,14 @@ public class Journal {
                     writer.write("\n");
                     inventoryCount++;
                     System.out.println("[SAVE] Saved inventory item: " + flower.getName() + " (" + flower.getGrowthStage() + ")");
+                } else if (item instanceof gardenPlot) {
+                    // NEW: Save flower pots in inventory
+                    gardenPlot pot = (gardenPlot) item;
+                    if (pot.isFlowerPot()) {
+                        writer.write("FlowerPot=empty\n");
+                        inventoryCount++;
+                        System.out.println("[SAVE] Saved empty flower pot in inventory");
+                    }
                 }
             }
             System.out.println("[SAVE] Saved " + inventoryCount + " inventory items");
@@ -129,10 +143,12 @@ public class Journal {
                             plot.isWatered() + "," + 
                             plot.isWeeded() + "," + 
                             plot.isFertilized() + "," +
-                            plot.getSoilQuality() + "\n");
+                            plot.getSoilQuality() + "," +
+                            plot.isFlowerPot() + "\n"); // NEW: Save flower pot status
                 
                 System.out.println("[SAVE] Plot " + i + ": watered=" + plot.isWatered() + 
-                                 ", weeded=" + plot.isWeeded() + ", fertilized=" + plot.isFertilized());
+                                 ", weeded=" + plot.isWeeded() + ", fertilized=" + plot.isFertilized() +
+                                 ", isFlowerPot=" + plot.isFlowerPot());
                 
                 if (plot.isOccupied()) {
                     Flower flower = plot.getPlantedFlower();
@@ -235,6 +251,12 @@ public class Journal {
                             player.advanceDay();
                         }
                         System.out.println("[LOAD] Set Day to: " + player.getDay());
+                    } else if (line.startsWith("FlowerPotsCrafted=")) {
+                        player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
+                        System.out.println("[LOAD] Set FlowerPotsCrafted to: " + player.getFlowerPotsCrafted());
+                    } else if (line.startsWith("HasBuiltExtraPlot=")) {
+                        player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
+                        System.out.println("[LOAD] Set HasBuiltExtraPlot to: " + player.hasBuiltExtraPlot());
                     }
                 } else if (section.equals("INVENTORY") && player != null) {
                     if (line.startsWith("Flower=")) {
@@ -252,6 +274,11 @@ public class Journal {
                             player.addToInventory(flower);
                             System.out.println("[LOAD] Added to inventory: " + name + " (" + growthStage + ")");
                         }
+                    } else if (line.startsWith("FlowerPot=")) {
+                        // NEW: Load flower pots in inventory
+                        gardenPlot pot = new gardenPlot(true); // Create as flower pot
+                        player.addToInventory(pot);
+                        System.out.println("[LOAD] Added empty flower pot to inventory");
                     }
                 } else if (section.equals("GARDEN_PLOTS") && player != null) {
                     if (line.startsWith("PlotCount=")) {
@@ -267,9 +294,15 @@ public class Journal {
                             pd.fertilized = Boolean.parseBoolean(plotData[3]);
                             pd.soilQuality = plotData[4];
                             
+                            // NEW: Load flower pot status
+                            if (plotData.length >= 6) {
+                                pd.isFlowerPot = Boolean.parseBoolean(plotData[5]);
+                            }
+                            
                             plotDataMap.put(plotIndex, pd);
                             System.out.println("[LOAD] Read plot " + plotIndex + " data: watered=" + pd.watered + 
-                                             ", weeded=" + pd.weeded + ", fertilized=" + pd.fertilized);
+                                             ", weeded=" + pd.weeded + ", fertilized=" + pd.fertilized +
+                                             ", isFlowerPot=" + pd.isFlowerPot);
                         }
                     } else if (line.startsWith("PlotFlower=")) {
                         String[] flowerData = line.substring(11).split(",");
@@ -309,14 +342,16 @@ public class Journal {
                 for (int i = 0; i < expectedPlotCount; i++) {
                     Journal.PlotData pd = plotDataMap.get(i);
                     if (pd != null) {
-                        gardenPlot plot = new gardenPlot();
+                        // NEW: Create flower pot or regular plot based on saved data
+                        gardenPlot plot = new gardenPlot(pd.isFlowerPot);
                         plot.setSoilQuality(pd.soilQuality);
                         plot.setWatered(pd.watered);
                         plot.setWeeded(pd.weeded);
                         plot.setFertilized(pd.fertilized);
                         
                         playerPlots.add(plot);
-                        System.out.println("[LOAD] Created plot " + i + " with states: watered=" + pd.watered + 
+                        System.out.println("[LOAD] Created plot " + i + " (isFlowerPot=" + pd.isFlowerPot + 
+                                         ") with states: watered=" + pd.watered + 
                                          ", weeded=" + pd.weeded + ", fertilized=" + pd.fertilized);
                         
                         // Restore flower if present
@@ -367,9 +402,7 @@ public class Journal {
         }
     }
     
-    /**
-     * Adds a journal entry to the player's save file and memory
-     */
+    // All other methods remain the same
     public static boolean addJournalEntry(Player1 player, String entry) {
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -430,7 +463,6 @@ public class Journal {
         }
     }
     
-    // All other methods remain the same
     public static List<String> getJournalEntries(String playerName) {
         return getJournalEntries(playerName, 0);
     }

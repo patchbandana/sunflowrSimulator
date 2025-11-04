@@ -2,10 +2,11 @@
  * Description: Garden Plot class for the sunflowrSimulator
  * Represents a single plot of land where flowers can be planted
  * 
- * BUG FIX: Added setter methods for watered, weeded, and fertilized states
- * This allows the Journal save/load system to properly restore plot states
+ * UPDATES:
+ * - Added flower pot functionality with isFlowerPot flag
+ * - Flower pots have special rules: no weeding, double durability penalty, restrictions on plant types
+ * - Added methods to check if a flower can be planted in a flower pot
  */
-
 
 public class gardenPlot {
     // Current plant in this garden plot
@@ -17,6 +18,9 @@ public class gardenPlot {
     private boolean isFertilized;
     private String soilQuality; // "Poor", "Average", "Good", "Excellent"
     
+    // NEW: Flower pot functionality
+    private boolean isFlowerPot; // Is this plot actually a flower pot?
+    
     /**
      * Creates a new garden plot with default values
      */
@@ -26,6 +30,78 @@ public class gardenPlot {
         this.isWeeded = true; // Start with a weeded plot
         this.isFertilized = false;
         this.soilQuality = "Average";
+        this.isFlowerPot = false; // Default to regular plot
+    }
+    
+    /**
+     * Creates a new flower pot (special type of garden plot)
+     * @param isFlowerPot true to create a flower pot
+     */
+    public gardenPlot(boolean isFlowerPot) {
+        this();
+        this.isFlowerPot = isFlowerPot;
+        if (isFlowerPot) {
+            this.isWeeded = true; // Flower pots don't get weeds
+            this.soilQuality = "Good"; // Flower pots have controlled soil
+        }
+    }
+    
+    /**
+     * Checks if this is a flower pot
+     * @return true if this is a flower pot
+     */
+    public boolean isFlowerPot() {
+        return isFlowerPot;
+    }
+    
+    /**
+     * Sets whether this is a flower pot
+     * @param isFlowerPot true to make this a flower pot
+     */
+    public void setFlowerPot(boolean isFlowerPot) {
+        this.isFlowerPot = isFlowerPot;
+        if (isFlowerPot) {
+            this.isWeeded = true; // Flower pots don't get weeds
+        }
+    }
+    
+    /**
+     * Checks if a flower can be planted in this flower pot
+     * Flower pots cannot contain:
+     * - Bush or Tree subspecies
+     * - Flowers with difficulty >= 4
+     * 
+     * @param flower The flower to check
+     * @return true if the flower can be planted in this flower pot
+     */
+    public boolean canPlantInFlowerPot(Flower flower) {
+        if (!isFlowerPot) {
+            return true; // Regular plots can plant anything
+        }
+        
+        // Check difficulty rating
+        int difficulty = FlowerRegistry.getFlowerDifficulty(flower.getName());
+        if (difficulty >= 4) {
+            return false; // Too difficult for flower pot
+        }
+        
+        // Check if it's a bush or tree by getting the species from FlowerRegistry
+        // We need to check the CSV data for the species field
+        String flowerName = flower.getName();
+        
+        // Get all flower names and check if this flower exists
+        if (!FlowerRegistry.flowerExists(flowerName)) {
+            return true; // If we can't find it, allow it (shouldn't happen)
+        }
+        
+        // Check the species field - we'll need to expose this in FlowerRegistry
+        // For now, check if the name contains "Bush" or "Tree"
+        String nameLower = flowerName.toLowerCase();
+        if (nameLower.contains("bush") || nameLower.contains("tree")) {
+            return false; // Bush or tree species not allowed
+        }
+        
+        return true; // All checks passed
     }
     
     /**
@@ -44,6 +120,11 @@ public class gardenPlot {
             return false;
         }
         
+        // Check flower pot restrictions
+        if (isFlowerPot && !canPlantInFlowerPot(flower)) {
+            return false;
+        }
+        
         // Plant the flower - set it to planted and set days planted to 1
         flower.setDaysPlanted(1);
         this.plantedFlower = flower;
@@ -51,7 +132,7 @@ public class gardenPlot {
     }
     
     /**
-     * BUG FIX: Force plants a flower regardless of growth stage
+     * Force plants a flower regardless of growth stage
      * This is used by the save/load system to restore planted flowers
      * @param flower The flower to force plant
      */
@@ -96,9 +177,14 @@ public class gardenPlot {
     
     /**
      * Weeds the garden plot
+     * Flower pots cannot be weeded (they don't get weeds)
      * @return true if weeding was successful
      */
     public boolean weedPlot() {
+        if (isFlowerPot) {
+            return false; // Can't weed a flower pot
+        }
+        
         if (isWeeded) {
             return false; // Already weeded
         }
@@ -121,7 +207,7 @@ public class gardenPlot {
     }
     
     /**
-     * BUG FIX: Directly sets the watered state (for save/load system)
+     * Directly sets the watered state (for save/load system)
      * @param watered The watered state to set
      */
     public void setWatered(boolean watered) {
@@ -129,7 +215,7 @@ public class gardenPlot {
     }
     
     /**
-     * BUG FIX: Directly sets the weeded state (for save/load system)
+     * Directly sets the weeded state (for save/load system)
      * @param weeded The weeded state to set
      */
     public void setWeeded(boolean weeded) {
@@ -137,7 +223,7 @@ public class gardenPlot {
     }
     
     /**
-     * BUG FIX: Directly sets the fertilized state (for save/load system)
+     * Directly sets the fertilized state (for save/load system)
      * @param fertilized The fertilized state to set
      */
     public void setFertilized(boolean fertilized) {
@@ -147,13 +233,20 @@ public class gardenPlot {
     /**
      * Advances the day for this garden plot, grows the plant if conditions are met
      * Growth is now influenced by care (watering/weeding) and flower difficulty
+     * 
+     * FLOWER POT CHANGES:
+     * - Flower pots don't get weeds, so weeding is always true
+     * - Double durability penalty if not watered
+     * 
      * @return true if the plant grew, false otherwise
      */
     public boolean advanceDay() {
         if (!isOccupied()) {
             // Reset daily states
             this.isWatered = false;
-            this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing
+            if (!isFlowerPot) {
+                this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing (not for flower pots)
+            }
             return false;
         }
         
@@ -177,12 +270,21 @@ public class gardenPlot {
             growthChance += 0.30; // +30% if watered
         } else {
             growthChance -= 0.25; // -25% if not watered
+            
+            // FLOWER POT: Double durability penalty if not watered
+            if (isFlowerPot) {
+                double currentDurability = plantedFlower.getDurability();
+                plantedFlower.setDurability(currentDurability - 1); // Extra -1 durability
+            }
         }
         
-        if (isWeeded) {
-            growthChance += 0.15; // +15% if weeded
-        } else {
-            growthChance -= 0.10; // -10% if weedy
+        // Weeding only matters for regular plots
+        if (!isFlowerPot) {
+            if (isWeeded) {
+                growthChance += 0.15; // +15% if weeded
+            } else {
+                growthChance -= 0.10; // -10% if weedy
+            }
         }
         
         if (isFertilized) {
@@ -246,7 +348,11 @@ public class gardenPlot {
         
         // Reset daily states
         this.isWatered = false;
-        this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing
+        if (!isFlowerPot) {
+            this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing (not for flower pots)
+        } else {
+            this.isWeeded = true; // Flower pots stay weed-free
+        }
         
         // Fertilizer has chance to fade each day
         if (this.isFertilized && Math.random() > 0.5) {
@@ -319,18 +425,29 @@ public class gardenPlot {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("📦 Garden Plot [Soil: ").append(soilQuality).append("]").append("\n");
+        
+        // Different icon for flower pot vs regular plot
+        if (isFlowerPot) {
+            sb.append("🪴 Flower Pot [Soil: ").append(soilQuality).append("]").append("\n");
+        } else {
+            sb.append("📦 Garden Plot [Soil: ").append(soilQuality).append("]").append("\n");
+        }
         
         if (isOccupied()) {
             sb.append("  Plant: ").append(plantedFlower.getName()).append(" (").append(plantedFlower.getGrowthStage()).append(")\n");
             sb.append("  Days Planted: ").append(plantedFlower.getDaysPlanted()).append("\n");
             sb.append("  Durability: ").append(plantedFlower.getDurability()).append("\n");
         } else {
-            sb.append("  [Empty Plot]\n");
+            sb.append("  [Empty]\n");
         }
         
         sb.append("  Watered: ").append(isWatered ? "✅" : "❌").append("\n");
-        sb.append("  Weeded: ").append(isWeeded ? "✅" : "❌").append("\n");
+        
+        // Only show weeding status for regular plots
+        if (!isFlowerPot) {
+            sb.append("  Weeded: ").append(isWeeded ? "✅" : "❌").append("\n");
+        }
+        
         sb.append("  Fertilized: ").append(isFertilized ? "✅" : "❌").append("\n");
         
         return sb.toString();
