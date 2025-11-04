@@ -1,6 +1,9 @@
 /* Pat Eizenga
  * 2024-07-09
  * Description: MammothSunflower class. The first seed you start with. WIP
+ * 
+ * BUG FIX: toString() now properly displays the flower's name and current growth stage
+ * instead of always showing "(Seed)"
  */
 
 
@@ -56,11 +59,51 @@ public class MammothSunflower extends Flower {
 	}
 	
 	/**
-	 * To string method WIP, for now just displays every method we have so far in a legible way
-	 * @return a string representation of this mammoth sunflower
+	 * BUG FIX: toString() method now properly displays the flower's actual name and growth stage
+	 * 
+	 * Previously this was hardcoded to always show "🌻 Mammoth Sunflower (Seed)" which meant:
+	 * - Rose seeds showed as "Mammoth Sunflower (Seed)"
+	 * - Bloomed flowers showed as "(Seed)" 
+	 * - Matured flowers showed as "(Seed)"
+	 * 
+	 * Now it dynamically displays:
+	 * - The actual flower name (from getName())
+	 * - The current growth stage (from getGrowthStage())
+	 * - Different emoji based on growth stage for visual clarity
+	 * 
+	 * @return a string representation of this flower with correct name and stage
 	 */
 	@Override
 	public String toString() {
-	    return "🌻 Mammoth Sunflower (Seed)";
+		// Get the actual name and growth stage from the parent Flower class
+		String name = getName();
+		String stage = getGrowthStage();
+		
+		// Choose emoji based on growth stage for visual feedback
+		String emoji = "🌻"; // Default sunflower emoji
+		
+		switch (stage) {
+			case "Seed":
+				emoji = "🌱"; // Seedling emoji for seeds
+				break;
+			case "Seedling":
+				emoji = "🌿"; // Young plant emoji
+				break;
+			case "Bloomed":
+				emoji = "🌸"; // Blossom emoji
+				break;
+			case "Matured":
+				emoji = "🌻"; // Full sunflower emoji
+				break;
+			case "Withered":
+				emoji = "🥀"; // Wilted flower emoji
+				break;
+			case "Mutated":
+				emoji = "✨"; // Sparkle emoji for mutations
+				break;
+		}
+		
+		// Return the formatted string with name and stage
+		return emoji + " " + name + " (" + stage + ")";
 	}
 }
