@@ -119,7 +119,7 @@ public class FlowerRegistry {
         
         // Create the flower with the CORRECT name from the database
         // This fixes the bug where all purchased seeds showed as "Mammoth Sunflower"
-        return new MammothSunflower(
+        return new FlowerInstance(
             data.name,              // Use the actual flower name from CSV
             "Seed",                 // Always start as a seed
             0,                      // Not planted yet (0 days)
