@@ -112,8 +112,8 @@ public class Journal {
                                  flower.getDurability() + "," +
                                  flower.getCost());
                     
-                    if (item instanceof MammothSunflower) {
-                        writer.write("," + ((MammothSunflower) item).getNRGRestored());
+                    if (item instanceof FlowerInstance) {
+                        writer.write("," + ((FlowerInstance) item).getNRGRestored());
                     }
                     
                     writer.write("\n");
@@ -159,8 +159,8 @@ public class Journal {
                                 flower.getDurability() + "," +
                                 flower.getCost());
                     
-                    if (flower instanceof MammothSunflower) {
-                        writer.write("," + ((MammothSunflower) flower).getNRGRestored());
+                    if (flower instanceof FlowerInstance) {
+                        writer.write("," + ((FlowerInstance) flower).getNRGRestored());
                     }
                     
                     writer.write("\n");
@@ -269,7 +269,7 @@ public class Journal {
                             double cost = Double.parseDouble(flowerData[4]);
                             int nrgRestored = (flowerData.length >= 6) ? Integer.parseInt(flowerData[5]) : 1;
                             
-                            MammothSunflower flower = new MammothSunflower(
+                            FlowerInstance flower = new FlowerInstance(
                                 name, growthStage, daysPlanted, durability, nrgRestored, cost);
                             player.addToInventory(flower);
                             System.out.println("[LOAD] Added to inventory: " + name + " (" + growthStage + ")");
@@ -363,7 +363,7 @@ public class Journal {
                             double cost = Double.parseDouble(pd.flowerData[5]);
                             int nrgRestored = (pd.flowerData.length >= 7) ? Integer.parseInt(pd.flowerData[6]) : 1;
                             
-                            MammothSunflower flower = new MammothSunflower(
+                            FlowerInstance flower = new FlowerInstance(
                                 name, growthStage, daysPlanted, durability, nrgRestored, cost);
                             
                             // Use forcePlantFlower to bypass the "Seed only" restriction
