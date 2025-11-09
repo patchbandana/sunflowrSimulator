@@ -1,6 +1,6 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 11/08/2025
+ * Last Updated: 11/09/2025
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * 
  * REFACTORING NOTES:
@@ -10,12 +10,13 @@
  * - Extracted shop functionality into ShopActions.java
  * - Extracted backpack display into BackpackActions.java
  * - Extracted trimming functionality into TrimmingActions.java
- * - Cleaned up debug statements in main game loop
+ * - Extracted garden check functionality into GardenCheckActions.java
+ * - Extracted journal functionality into JournalActions.java
+ * - Main file now focuses on core game loop and day advancement
  * - Maintained all original gameplay and flavor text
  */
 
 import java.util.Scanner;
-import java.util.List;
 
 /**
  * Main game executed here.
@@ -105,9 +106,6 @@ public class sunflowerSimulator {
 
 			case "0": // Go to bed
 				handleBedtimeMenu(player, scanner);
-				if (!gameContinues) {
-					gameContinues = false; // Exit if player chose to quit
-				}
 				break;
 
 			case "1": // Weed Garden
@@ -139,11 +137,11 @@ public class sunflowerSimulator {
 				break;
 
 			case "8": // Check
-				handleGardenCheck(player, scanner);
+				GardenCheckActions.handleGardenCheck(player, scanner);
 				break;
 
 			case "9": // Journal
-				player = handleJournal(player, scanner);
+				player = JournalActions.handleJournal(player, scanner);
 				break;
 
 			case "X":
@@ -241,9 +239,9 @@ public class sunflowerSimulator {
 
 		if (dreamOrHint != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("╔═══════════════════════════════════╗");
+			System.out.println("╔══════════════════════════════════╗");
 			System.out.println(dreamOrHint);
-			System.out.println("╚═══════════════════════════════════╝");
+			System.out.println("╚══════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
@@ -302,386 +300,5 @@ public class sunflowerSimulator {
 				System.out.println("  ⚠ " + witheredCount + " plant(s) withered. Consider harvesting them.");
 			}
 		}
-	}
-
-	// ========================================
-	// GARDEN CHECK & PLOT-SPECIFIC ACTIONS
-	// ========================================
-
-	/**
-	 * Handles the garden check menu and plot-specific actions
-	 */
-	private static void handleGardenCheck(Player1 player, Scanner scanner) {
-		System.out.println("\n🌱 Checking your garden... 🌱");
-
-		List<gardenPlot> plots = player.getGardenPlots();
-		if (plots.isEmpty()) {
-			System.out.println("You don't have any garden plots yet!");
-			return;
-		}
-
-		player.printGarden();
-
-		// Offer actions on specific plots
-		System.out.println("\nWould you like to perform an action on a specific plot?");
-		System.out.println("1: Water a plot");
-		System.out.println("2: Weed a plot");
-		System.out.println("3: Fertilize a plot");
-		System.out.println("4: Harvest a plant");
-		System.out.println("0: Return to main menu");
-
-		System.out.print("\nEnter your choice: ");
-		String gardenAction = scanner.nextLine();
-
-		if (gardenAction.equals("0")) {
-			return;
-		}
-
-		// Energy check for all garden actions
-		if (player.getNRG() <= 0) {
-			System.out.println("You're too tired to do that. You need to go to bed first!");
-			return;
-		}
-
-		// Ask which plot to perform action on
-		System.out.print("\nWhich plot would you like to work with? (1-" + plots.size() + "): ");
-
-		int plotChoice;
-		try {
-			plotChoice = Integer.parseInt(scanner.nextLine());
-		} catch (NumberFormatException e) {
-			System.out.println("Invalid input. Please enter a number.");
-			return;
-		}
-
-		if (plotChoice < 1 || plotChoice > plots.size()) {
-			System.out.println("Invalid plot number. Please choose a valid plot.");
-			return;
-		}
-
-		gardenPlot selectedPlot = plots.get(plotChoice - 1);
-
-		switch (gardenAction) {
-		case "1": // Water
-			handleWaterPlot(player, selectedPlot);
-			break;
-
-		case "2": // Weed
-			handleWeedPlot(player, selectedPlot, plotChoice);
-			break;
-
-		case "3": // Fertilize
-			handleFertilizePlot(player, selectedPlot);
-			break;
-
-		case "4": // Harvest
-			handleHarvestPlot(player, selectedPlot, scanner);
-			break;
-
-		default:
-			System.out.println("Invalid choice! Please try again.");
-		}
-	}
-
-	/**
-	 * Waters a specific plot
-	 */
-	private static void handleWaterPlot(Player1 player, gardenPlot selectedPlot) {
-		if (selectedPlot.isOccupied()) {
-			if (selectedPlot.isWatered()) {
-				System.out.println("This plot is already watered today!");
-			} else {
-				selectedPlot.waterPlot();
-				System.out.println("You watered the " + 
-						selectedPlot.getPlantedFlower().getName() + ".");
-				if (selectedPlot.isFlowerPot()) {
-					System.out.println("💡 Good! Flower pot plants need daily watering to avoid durability loss.");
-				}
-				player.setNRG(player.getNRG() - 1);
-				System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
-				Journal.addJournalEntry(player, "Watered a " + 
-						selectedPlot.getPlantedFlower().getName() + ".");
-			}
-		} else {
-			System.out.println("There's nothing planted in this plot to water!");
-		}
-	}
-
-	/**
-	 * Weeds a specific plot
-	 */
-	private static void handleWeedPlot(Player1 player, gardenPlot selectedPlot, int plotChoice) {
-		if (selectedPlot.isFlowerPot()) {
-			System.out.println("Flower pots don't need weeding!");
-		} else if (!selectedPlot.isWeeded()) {
-			selectedPlot.weedPlot();
-			System.out.println("You removed the weeds from plot #" + plotChoice + ".");
-			player.setNRG(player.getNRG() - 1);
-			System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
-			Journal.addJournalEntry(player, "Weeded plot #" + plotChoice + ".");
-		} else {
-			System.out.println("This plot is already free of weeds!");
-		}
-	}
-
-	/**
-	 * Fertilizes a specific plot
-	 */
-	private static void handleFertilizePlot(Player1 player, gardenPlot selectedPlot) {
-		if (selectedPlot.isOccupied()) {
-			if (selectedPlot.isFertilized()) {
-				System.out.println("This plot is already fertilized!");
-			} else {
-				selectedPlot.fertilizePlot();
-				System.out.println("You fertilized the " + 
-						selectedPlot.getPlantedFlower().getName() + ".");
-				player.setNRG(player.getNRG() - 1);
-				System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
-				Journal.addJournalEntry(player, "Fertilized a " + 
-						selectedPlot.getPlantedFlower().getName() + ".");
-			}
-		} else {
-			System.out.println("There's nothing planted in this plot to fertilize!");
-		}
-	}
-
-	/**
-	 * Harvests a plant from a specific plot
-	 */
-	private static void handleHarvestPlot(Player1 player, gardenPlot selectedPlot, Scanner scanner) {
-		if (!selectedPlot.isOccupied()) {
-			System.out.println("There's nothing planted in this plot to harvest!");
-			return;
-		}
-
-		Flower plant = selectedPlot.getPlantedFlower();
-		String growthStage = plant.getGrowthStage();
-
-		if (growthStage.equals("Seed") || growthStage.equals("Seedling")) {
-			// SPECIAL FLOWER POT BEHAVIOR
-			if (selectedPlot.isFlowerPot()) {
-				System.out.println("This plant is still young.");
-				System.out.println("🪴 Since it's in a flower pot, you can harvest it AND take the pot with you!");
-				System.out.print("Harvest and pack the flower pot? (yes/no): ");
-				String confirm = scanner.nextLine().toLowerCase();
-
-				if (confirm.equals("yes")) {
-					// Harvest the flower
-					Flower harvestedFlower = selectedPlot.harvestFlower();
-					player.addToInventory(harvestedFlower);
-
-					// Remove the flower pot from garden plots
-					player.getGardenPlots().remove(selectedPlot);
-
-					// Add the empty flower pot back to inventory
-					gardenPlot emptyPot = new gardenPlot(true);
-					player.addToInventory(emptyPot);
-
-					System.out.println("✅ You harvested the " + harvestedFlower.getName() + 
-							" (" + harvestedFlower.getGrowthStage() + ").");
-					System.out.println("🪴 The flower pot has been returned to your inventory!");
-
-					player.setNRG(player.getNRG() - 2);
-					System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
-					Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
-							" (" + harvestedFlower.getGrowthStage() + ") and packed the flower pot.");
-				} else {
-					System.out.println("Harvest cancelled.");
-				}
-			} else {
-				System.out.println("This plant is too young to harvest!");
-			}
-		} else {
-			// Regular harvest for Bloomed/Matured/Withered
-			Flower harvestedFlower = selectedPlot.harvestFlower();
-			player.addToInventory(harvestedFlower);
-
-			System.out.println("You harvested the " + harvestedFlower.getName() + 
-					" (" + harvestedFlower.getGrowthStage() + ").");
-			System.out.println("It has been added to your inventory.");
-
-			if (selectedPlot.isFlowerPot()) {
-				System.out.println("🪴 The flower pot remains in your garden for replanting.");
-			}
-
-			player.setNRG(player.getNRG() - 2);
-			System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
-			Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
-					" (" + harvestedFlower.getGrowthStage() + ").");
-		}
-	}
-
-	// ========================================
-	// JOURNAL MENU
-	// ========================================
-
-	/**
-	 * Handles the journal menu
-	 */
-	private static Player1 handleJournal(Player1 player, Scanner scanner) {
-		boolean inJournal = true;
-		int currentPage = 0;
-		int totalPages = Math.max(1, (int)Math.ceil((double)player.getJournalEntries().size() / Journal.ENTRIES_PER_PAGE));
-
-		while (inJournal) {
-			System.out.println("\n📖 Journal Menu 📖");
-			System.out.println("1. View Journal Entries");
-			System.out.println("2. Add New Entry");
-			System.out.println("3. Save Game / Exit");
-			System.out.println("4. Return to Main Menu");
-			System.out.println("5. Reset Game (New Game+)");
-
-			System.out.print("\nEnter your choice: ");
-			String journalChoice = scanner.next();
-			scanner.nextLine();
-
-			switch (journalChoice) {
-			case "1":
-				// View journal entries with pagination
-				boolean viewingEntries = true;
-
-				List<String> allEntries = player.getJournalEntries();
-				totalPages = Math.max(1, (int)Math.ceil((double)allEntries.size() / Journal.ENTRIES_PER_PAGE));
-
-				while (viewingEntries) {
-					System.out.println("\n=== Journal Entries (Page " + (currentPage + 1) + " of " + totalPages + ") ===");
-
-					int startIndex = currentPage * Journal.ENTRIES_PER_PAGE;
-					int endIndex = Math.min(startIndex + Journal.ENTRIES_PER_PAGE, allEntries.size());
-
-					if (allEntries.isEmpty()) {
-						System.out.println("No journal entries yet. Add some with option 2!");
-						viewingEntries = false;
-						System.out.println("\nPress Enter to continue...");
-						scanner.nextLine();
-						break;
-					} else if (startIndex >= allEntries.size()) {
-						System.out.println("No entries on this page.");
-						currentPage = 0;
-						continue;
-					} else {
-						for (int i = startIndex; i < endIndex; i++) {
-							System.out.println(allEntries.get(i));
-						}
-					}
-
-					System.out.println("\nNavigation:");
-					if (currentPage > 0) {
-						System.out.println("P: Previous Page");
-					}
-					if (currentPage < totalPages - 1 && endIndex < allEntries.size()) {
-						System.out.println("N: Next Page");
-					}
-					System.out.println("B: Back to Journal Menu");
-
-					System.out.print("\nEnter your choice: ");
-					String pageChoice = scanner.next().toUpperCase();
-					scanner.nextLine();
-
-					switch (pageChoice) {
-					case "P":
-						if (currentPage > 0) {
-							currentPage--;
-						}
-						break;
-					case "N":
-						if (currentPage < totalPages - 1 && endIndex < allEntries.size()) {
-							currentPage++;
-						}
-						break;
-					case "B":
-						viewingEntries = false;
-						break;
-					default:
-						System.out.println("Invalid choice. Please try again.");
-					}
-				}
-				break;
-
-			case "2":
-				System.out.println("\nWrite a new journal entry:");
-				String newEntry = scanner.nextLine();
-				if (Journal.addJournalEntry(player, newEntry)) {
-					System.out.println("Journal entry added successfully!");
-					Journal.saveGame(player);
-					totalPages = Math.max(1, (int)Math.ceil((double)player.getJournalEntries().size() / Journal.ENTRIES_PER_PAGE));
-				} else {
-					System.out.println("Failed to add journal entry.");
-				}
-				break;
-
-			case "3":
-				System.out.println("\nSave / Exit Options:");
-				System.out.println("1. Save Game and Continue");
-				System.out.println("2. Save Game and Exit");
-				System.out.print("\nEnter your choice: ");
-				String saveChoice = scanner.next();
-				scanner.nextLine();
-
-				switch (saveChoice) {
-				case "1":
-					if (Journal.saveGame(player)) {
-						System.out.println("Game saved successfully!");
-					} else {
-						System.out.println("Failed to save game.");
-					}
-					break;
-				case "2":
-					System.out.println("Saving game and exiting...");
-					Journal.addJournalEntry(player, "Ended gardening session on day " + player.getDay() + ".");
-					if (Journal.saveGame(player)) {
-						System.out.println("Game saved successfully. Thanks for playing!");
-					} else {
-						System.out.println("Warning: There was an issue saving the game.");
-						System.out.println("Exiting anyway. Thanks for playing!");
-					}
-					System.exit(0);
-					break;
-				default:
-					System.out.println("Invalid choice. Returning to Journal Menu.");
-				}
-				break;
-
-			case "4":
-				inJournal = false;
-				break;
-
-			case "5":
-				System.out.println("\n⚠️ WARNING: This will reset your game while keeping your name! ⚠️");
-				System.out.println("All progress, inventory items, and stats will be reset to default values.");
-				System.out.println("This cannot be undone. Your previous save will be overwritten.");
-				System.out.print("\nAre you sure you want to reset? (yes/no): ");
-				String confirmReset = scanner.next().toLowerCase();
-				scanner.nextLine();
-
-				if (confirmReset.equals("yes")) {
-					String nameToKeep = player.getName();
-					player = new Player1(nameToKeep);
-
-					FlowerInstance starterSeed = new FlowerInstance(
-							"Mammoth Sunflower", "Seed", 0, 10, 1, 5);
-					player.addToInventory(starterSeed);
-
-					Journal.resetGame(player);
-					Journal.addJournalEntry(player, "Started a new adventure! (New Game+)");
-
-					System.out.println("\n🔄 Game has been reset successfully!");
-					System.out.println("Welcome to your new adventure, " + nameToKeep + "!");
-					System.out.println("It is day " + player.getDay() + ".");
-					System.out.println("You have " + player.getNRG() + " NRG and " + player.getCredits() + " credits.");
-					System.out.println("A new Mammoth Sunflower seed has been added to your inventory.");
-
-					inJournal = false;
-				} else {
-					System.out.println("Reset cancelled. Your game remains unchanged.");
-				}
-				break;
-
-			default:
-				System.out.println("Invalid choice. Please try again.");
-			}
-		}
-		
-		return player;
 	}
 }
