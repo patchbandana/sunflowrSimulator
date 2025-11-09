@@ -9,13 +9,13 @@
  * - Extracted build menu functionality into BuildingActions.java
  * - Extracted shop functionality into ShopActions.java
  * - Extracted backpack display into BackpackActions.java
- * - Main game loop now focuses on core game flow and coordination
+ * - Extracted trimming functionality into TrimmingActions.java
+ * - Cleaned up debug statements in main game loop
  * - Maintained all original gameplay and flavor text
  */
 
 import java.util.Scanner;
 import java.util.List;
-import java.util.ArrayList;
 
 /**
  * Main game executed here.
@@ -105,34 +105,37 @@ public class sunflowerSimulator {
 
 			case "0": // Go to bed
 				handleBedtimeMenu(player, scanner);
+				if (!gameContinues) {
+					gameContinues = false; // Exit if player chose to quit
+				}
 				break;
 
-			case "1": // Weed Garden - REFACTORED
+			case "1": // Weed Garden
 				GardenActions.weedGarden(player);
 				break;
 
-			case "2": // Water Garden - REFACTORED
+			case "2": // Water Garden
 				GardenActions.waterGarden(player);
 				break;
 
-			case "3": // Plant - REFACTORED
+			case "3": // Plant
 				PlantingActions.handlePlanting(player, scanner);
 				break;
 
-			case "4": // Build - REFACTORED
+			case "4": // Build
 				BuildingActions.handleBuildMenu(player, scanner);
 				break;
 
-			case "5": // Shop - REFACTORED
+			case "5": // Shop
 				ShopActions.handleShop(player, scanner);
 				break;
 
-			case "6": // Backpack/Inventory - REFACTORED
+			case "6": // Backpack/Inventory
 				BackpackActions.displayBackpack(player, scanner);
 				break;
 
 			case "7": // Trim Plants
-				handleTrimming(player, scanner);
+				TrimmingActions.handleTrimming(player, scanner);
 				break;
 
 			case "8": // Check
@@ -238,9 +241,9 @@ public class sunflowerSimulator {
 
 		if (dreamOrHint != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("╔════════════════════════════════════╗");
+			System.out.println("╔═══════════════════════════════════╗");
 			System.out.println(dreamOrHint);
-			System.out.println("╚════════════════════════════════════╝");
+			System.out.println("╚═══════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
@@ -302,108 +305,7 @@ public class sunflowerSimulator {
 	}
 
 	// ========================================
-	// TRIMMING
-	// ========================================
-
-	/**
-	 * Handles plant trimming
-	 */
-	private static void handleTrimming(Player1 player, Scanner scanner) {
-		if (player.getNRG() <= 0) {
-			System.out.println("You're too tired to do that. You need to go to bed first!");
-			return;
-		}
-
-		// Check if there are any mature plants to trim
-		boolean hasTrimablePlants = false;
-		for (gardenPlot plot : player.getGardenPlots()) {
-			if (plot.isOccupied()) {
-				String stage = plot.getPlantedFlower().getGrowthStage();
-				if (stage.equals("Bloomed") || stage.equals("Matured")) {
-					hasTrimablePlants = true;
-					break;
-				}
-			}
-		}
-
-		if (!hasTrimablePlants) {
-			System.out.println("You don't have any plants that need trimming yet!");
-			System.out.println("Plants need to be at least in the 'Bloomed' stage to be trimmed.");
-			return;
-		}
-
-		// Display garden plots with their plants
-		System.out.println("\n🌱 Your Garden Plants 🌱");
-		List<gardenPlot> gardenPlots = player.getGardenPlots();
-		List<Integer> trimablePlotIndices = new ArrayList<>();
-
-		for (int i = 0; i < gardenPlots.size(); i++) {
-			gardenPlot plot = gardenPlots.get(i);
-			String plotType = plot.isFlowerPot() ? "[🪴]" : "[📦]";
-			if (plot.isOccupied()) {
-				Flower plant = plot.getPlantedFlower();
-				String stage = plant.getGrowthStage();
-				System.out.println("Plot #" + (i+1) + " " + plotType + ": " + plant.getName() + 
-						" (" + stage + ")" + 
-						(stage.equals("Bloomed") || stage.equals("Matured") ? 
-								" - Can be trimmed" : ""));
-
-				if (stage.equals("Bloomed") || stage.equals("Matured")) {
-					trimablePlotIndices.add(i);
-				}
-			} else {
-				System.out.println("Plot #" + (i+1) + " " + plotType + ": [Empty]");
-			}
-		}
-
-		// Ask which plot to trim
-		System.out.print("\nWhich plot would you like to trim? (");
-		for (int i = 0; i < trimablePlotIndices.size(); i++) {
-			System.out.print((trimablePlotIndices.get(i) + 1));
-			if (i < trimablePlotIndices.size() - 1) {
-				System.out.print(", ");
-			}
-		}
-		System.out.print(", or 0 to cancel): ");
-
-		int plotChoice;
-		try {
-			plotChoice = Integer.parseInt(scanner.nextLine());
-		} catch (NumberFormatException e) {
-			System.out.println("Invalid input. Please enter a number.");
-			return;
-		}
-
-		if (plotChoice == 0) {
-			System.out.println("Trimming cancelled.");
-			return;
-		}
-
-		if (plotChoice < 1 || plotChoice > gardenPlots.size() || 
-				!trimablePlotIndices.contains(plotChoice - 1)) {
-			System.out.println("Invalid plot choice. Please select a plot with a trimable plant.");
-			return;
-		}
-
-		// Trim the plant
-		gardenPlot selectedPlot = gardenPlots.get(plotChoice - 1);
-		Flower plant = selectedPlot.getPlantedFlower();
-
-		// Increase durability slightly when trimmed
-		plant.setDurability(plant.getDurability() + 2);
-
-		// Use energy
-		player.setNRG(player.getNRG() - 1);
-
-		System.out.println("You carefully trim the " + plant.getName() + ".");
-		System.out.println("It looks healthier now! Durability increased.");
-		System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
-
-		Journal.addJournalEntry(player, "Trimmed a " + plant.getName() + " in plot #" + plotChoice + ".");
-	}
-
-	// ========================================
-	// GARDEN CHECK & PLOT ACTIONS
+	// GARDEN CHECK & PLOT-SPECIFIC ACTIONS
 	// ========================================
 
 	/**
@@ -610,7 +512,7 @@ public class sunflowerSimulator {
 	}
 
 	// ========================================
-	// JOURNAL
+	// JOURNAL MENU
 	// ========================================
 
 	/**
