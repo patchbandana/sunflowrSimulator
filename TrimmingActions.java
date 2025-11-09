@@ -1,0 +1,274 @@
+/* TrimmingActions.java
+ * Handles all plant trimming actions with enhanced mechanics
+ * Created to modularize sunflowerSimulator.java
+ * 
+ * TRIMMING MECHANICS:
+ * - Bloomed: Moderate durability increase
+ * - Matured: Durability increase + 1 bloomed flower (plant stays in ground)
+ * - Mutated: 5-8 bloomed flowers (no durability increase, plant stays in ground)
+ */
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.Scanner;
+
+public class TrimmingActions {
+    
+    private static final Random random = new Random();
+    
+    /**
+     * Handles the complete trimming workflow
+     * @param player The player performing the action
+     * @param scanner Scanner for user input
+     */
+    public static void handleTrimming(Player1 player, Scanner scanner) {
+        if (player.getNRG() <= 0) {
+            System.out.println("You're too tired to do that. You need to go to bed first!");
+            return;
+        }
+
+        // Check if there are any trimmable plants
+        List<Integer> trimmablePlotIndices = getTrimmablePlots(player);
+        
+        if (trimmablePlotIndices.isEmpty()) {
+            System.out.println("You don't have any plants that need trimming yet!");
+            System.out.println("Plants need to be at least in the 'Bloomed' stage to be trimmed.");
+            return;
+        }
+
+        // Display garden with trimmable plants
+        displayTrimmableGarden(player, trimmablePlotIndices);
+
+        // Ask which plot to trim
+        int plotChoice = selectPlotToTrim(player, trimmablePlotIndices, scanner);
+        
+        if (plotChoice == -1) {
+            System.out.println("Trimming cancelled.");
+            return;
+        }
+
+        // Perform the trim action
+        trimPlant(player, plotChoice);
+    }
+    
+    /**
+     * Gets indices of all plots with trimmable plants
+     * @param player The player
+     * @return List of plot indices that can be trimmed
+     */
+    private static List<Integer> getTrimmablePlots(Player1 player) {
+        List<Integer> trimmablePlotIndices = new ArrayList<>();
+        List<gardenPlot> gardenPlots = player.getGardenPlots();
+        
+        for (int i = 0; i < gardenPlots.size(); i++) {
+            gardenPlot plot = gardenPlots.get(i);
+            if (plot.isOccupied()) {
+                String stage = plot.getPlantedFlower().getGrowthStage();
+                if (stage.equals("Bloomed") || stage.equals("Matured") || stage.equals("Mutated")) {
+                    trimmablePlotIndices.add(i);
+                }
+            }
+        }
+        
+        return trimmablePlotIndices;
+    }
+    
+    /**
+     * Displays the garden with trimmable plants highlighted
+     * @param player The player
+     * @param trimmablePlotIndices List of indices that can be trimmed
+     */
+    private static void displayTrimmableGarden(Player1 player, List<Integer> trimmablePlotIndices) {
+        System.out.println("\n🌱 Your Garden Plants 🌱");
+        List<gardenPlot> gardenPlots = player.getGardenPlots();
+        
+        for (int i = 0; i < gardenPlots.size(); i++) {
+            gardenPlot plot = gardenPlots.get(i);
+            String plotType = plot.isFlowerPot() ? "[🪴]" : "[📦]";
+            
+            if (plot.isOccupied()) {
+                Flower plant = plot.getPlantedFlower();
+                String stage = plant.getGrowthStage();
+                String trimInfo = getTrimInfo(stage);
+                
+                System.out.println("Plot #" + (i+1) + " " + plotType + ": " + plant.getName() + 
+                        " (" + stage + ")" + trimInfo);
+            } else {
+                System.out.println("Plot #" + (i+1) + " " + plotType + ": [Empty]");
+            }
+        }
+    }
+    
+    /**
+     * Gets descriptive trimming information for each growth stage
+     * @param stage The growth stage
+     * @return Description of what trimming will do
+     */
+    private static String getTrimInfo(String stage) {
+        switch (stage) {
+            case "Bloomed":
+                return " - Can be trimmed (Durability +2)";
+            case "Matured":
+                return " - Can be trimmed (Durability +2, +1 Bloomed flower)";
+            case "Mutated":
+                return " - Can be trimmed (5-8 Bloomed flowers!)";
+            default:
+                return "";
+        }
+    }
+    
+    /**
+     * Allows player to select which plot to trim
+     * @param player The player
+     * @param trimmablePlotIndices List of valid plot indices
+     * @param scanner Scanner for user input
+     * @return Selected plot index (0-based) or -1 if cancelled
+     */
+    private static int selectPlotToTrim(Player1 player, List<Integer> trimmablePlotIndices, Scanner scanner) {
+        System.out.print("\nWhich plot would you like to trim? (");
+        for (int i = 0; i < trimmablePlotIndices.size(); i++) {
+            System.out.print((trimmablePlotIndices.get(i) + 1));
+            if (i < trimmablePlotIndices.size() - 1) {
+                System.out.print(", ");
+            }
+        }
+        System.out.print(", or 0 to cancel): ");
+
+        int plotChoice;
+        try {
+            plotChoice = Integer.parseInt(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input. Please enter a number.");
+            return -1;
+        }
+
+        if (plotChoice == 0) {
+            return -1;
+        }
+
+        if (plotChoice < 1 || plotChoice > player.getGardenPlots().size() || 
+                !trimmablePlotIndices.contains(plotChoice - 1)) {
+            System.out.println("Invalid plot choice. Please select a plot with a trimmable plant.");
+            return -1;
+        }
+        
+        return plotChoice - 1; // Return 0-based index
+    }
+    
+    /**
+     * Performs the trim action on the selected plant
+     * @param player The player
+     * @param plotIndex The 0-based index of the plot to trim
+     */
+    private static void trimPlant(Player1 player, int plotIndex) {
+        gardenPlot selectedPlot = player.getGardenPlots().get(plotIndex);
+        Flower plant = selectedPlot.getPlantedFlower();
+        String stage = plant.getGrowthStage();
+        String plantName = plant.getName();
+        
+        // Use energy
+        player.setNRG(player.getNRG() - 1);
+        
+        System.out.println("\nYou carefully trim the " + plantName + "...");
+        
+        switch (stage) {
+            case "Bloomed":
+                trimBloomedPlant(player, plant, plantName);
+                break;
+                
+            case "Matured":
+                trimMaturedPlant(player, plant, plantName);
+                break;
+                
+            case "Mutated":
+                trimMutatedPlant(player, plant, plantName);
+                break;
+                
+            default:
+                System.out.println("This plant can't be trimmed right now.");
+                return;
+        }
+        
+        System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
+        Journal.saveGame(player);
+    }
+    
+    /**
+     * Handles trimming a bloomed plant
+     * @param player The player
+     * @param plant The plant being trimmed
+     * @param plantName The plant's name
+     */
+    private static void trimBloomedPlant(Player1 player, Flower plant, String plantName) {
+        plant.setDurability(plant.getDurability() + 2);
+        
+        System.out.println("✨ The bloomed " + plantName + " looks healthier now!");
+        System.out.println("   Durability increased by 2.");
+        
+        Journal.addJournalEntry(player, "Trimmed a bloomed " + plantName + ".");
+    }
+    
+    /**
+     * Handles trimming a matured plant
+     * @param player The player
+     * @param plant The plant being trimmed
+     * @param plantName The plant's name
+     */
+    private static void trimMaturedPlant(Player1 player, Flower plant, String plantName) {
+        plant.setDurability(plant.getDurability() + 2);
+        
+        // Create a bloomed flower to add to inventory
+        double bloomedValue = FlowerRegistry.getFlowerValue(plantName, "Bloomed");
+        FlowerInstance bloomedFlower = new FlowerInstance(
+            plantName, 
+            "Bloomed", 
+            0, // Not planted
+            plant.getDurability(), 
+            1, // NRG restored (seeds only, but setting default)
+            bloomedValue
+        );
+        
+        player.addToInventory(bloomedFlower);
+        
+        System.out.println("🌸 You carefully trim the mature " + plantName + "!");
+        System.out.println("   Durability increased by 2.");
+        System.out.println("   You harvested 1 bloomed " + plantName + " flower!");
+        System.out.println("   (The plant remains in the ground and continues growing)");
+        
+        Journal.addJournalEntry(player, "Trimmed a matured " + plantName + " and harvested 1 bloomed flower.");
+    }
+    
+    /**
+     * Handles trimming a mutated plant
+     * @param player The player
+     * @param plant The plant being trimmed
+     * @param plantName The plant's name
+     */
+    private static void trimMutatedPlant(Player1 player, Flower plant, String plantName) {
+        // Mutated plants yield 5-8 bloomed flowers but no durability increase
+        int flowerCount = 5 + random.nextInt(4); // 5-8 flowers
+        double bloomedValue = FlowerRegistry.getFlowerValue(plantName, "Bloomed");
+        
+        // Add multiple bloomed flowers to inventory
+        for (int i = 0; i < flowerCount; i++) {
+            FlowerInstance bloomedFlower = new FlowerInstance(
+                plantName, 
+                "Bloomed", 
+                0, 
+                plant.getDurability(), 
+                1,
+                bloomedValue
+            );
+            player.addToInventory(bloomedFlower);
+        }
+        
+        System.out.println("✨💫 The mutated " + plantName + " produces an abundance of flowers!");
+        System.out.println("   You harvested " + flowerCount + " bloomed " + plantName + " flowers!");
+        System.out.println("   (The mutated plant remains in the ground)");
+        System.out.println("   🔮 Mutated plants don't gain durability from trimming.");
+        
+        Journal.addJournalEntry(player, "Trimmed a mutated " + plantName + " and harvested " + 
+                              flowerCount + " bloomed flowers!");
+    }
+}
