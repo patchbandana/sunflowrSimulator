@@ -1,6 +1,12 @@
 /* BuildingActions.java
  * Handles all building-related actions including flower pot crafting and garden plot expansion
  * Created to modularize sunflowerSimulator.java
+ * 
+ * UPDATED: Fixed garden expansion costs to be achievable
+ * - 4th plot: 10 NRG, 10 credits (was 10 NRG, 10 credits) ✓
+ * - 5th plot: 11 NRG, 50 credits (was 15 NRG, 15 credits)
+ * - 6th plot: 12 NRG, 100 credits (was 20 NRG, 20 credits)
+ * - Further plots: +1 NRG, +75 credits per expansion
  */
 
 import java.util.Scanner;
@@ -65,13 +71,54 @@ public class BuildingActions {
         System.out.println("What would you like to build?");
         System.out.println("1: Craft a Flower Pot (20 credits, 2 NRG)");
 
-        // Calculate cost for next garden plot
-        int nextPlotNumber = currentPlots - placedFlowerPots + 1; // Number of regular plots + 1
-        int plotNRGCost = (nextPlotNumber - 3) * 5 + 10; // 4th=10, 5th=15, 6th=20, etc.
-        int plotCreditCost = (nextPlotNumber - 3) * 5 + 10;
+        // Calculate cost for next garden plot (excluding flower pots from count)
+        int regularPlotCount = currentPlots - placedFlowerPots;
+        int[] costs = calculatePlotCost(regularPlotCount);
+        int plotNRGCost = costs[0];
+        int plotCreditCost = costs[1];
 
         System.out.println("2: Dig a New Garden Plot (" + plotCreditCost + " credits, " + plotNRGCost + " NRG)");
         System.out.println("3: Return to Main Menu");
+    }
+    
+    /**
+     * Calculates the cost for the next garden plot expansion
+     * Formula:
+     * - 4th plot: 10 NRG, 10 credits
+     * - 5th plot: 11 NRG, 50 credits
+     * - 6th plot: 12 NRG, 100 credits
+     * - 7th+ plots: +1 NRG, +75 credits per expansion
+     * 
+     * @param currentRegularPlots Number of regular plots (excluding flower pots)
+     * @return Array [nrgCost, creditCost]
+     */
+    private static int[] calculatePlotCost(int currentRegularPlots) {
+        int nextPlotNumber = currentRegularPlots + 1; // What plot number we're building
+        int nrgCost;
+        int creditCost;
+        
+        switch (nextPlotNumber) {
+            case 4:
+                nrgCost = 10;
+                creditCost = 10;
+                break;
+            case 5:
+                nrgCost = 11;
+                creditCost = 50;
+                break;
+            case 6:
+                nrgCost = 12;
+                creditCost = 100;
+                break;
+            default:
+                // 7th and beyond: each plot costs 1 more NRG and 75 more credits
+                int expansionsBeyondSix = nextPlotNumber - 6;
+                nrgCost = 12 + expansionsBeyondSix;
+                creditCost = 100 + (expansionsBeyondSix * 75);
+                break;
+        }
+        
+        return new int[]{nrgCost, creditCost};
     }
     
     /**
@@ -165,16 +212,20 @@ public class BuildingActions {
     private static void digNewGardenPlot(Player1 player, Scanner scanner) {
         int currentPlots = player.getGardenPlots().size();
         int placedFlowerPots = player.getPlacedFlowerPotCount();
-        int nextPlotNumber = currentPlots - placedFlowerPots + 1;
-        int plotNRGCost = (nextPlotNumber - 3) * 5 + 10;
-        int plotCreditCost = (nextPlotNumber - 3) * 5 + 10;
+        int regularPlotCount = currentPlots - placedFlowerPots;
+        
+        int[] costs = calculatePlotCost(regularPlotCount);
+        int plotNRGCost = costs[0];
+        int plotCreditCost = costs[1];
         
         System.out.println("\n🌱 Garden Plot Expansion 🌱");
         System.out.println("Cost: " + plotCreditCost + " credits, " + plotNRGCost + " NRG");
         System.out.println();
-        System.out.println("This will be garden plot #" + (currentPlots + 1));
+        System.out.println("This will be regular garden plot #" + (regularPlotCount + 1));
+        System.out.println("(Total plots including flower pots: " + (currentPlots + 1) + ")");
+        System.out.println();
         System.out.println("Regular garden plots can plant any flower with no restrictions.");
-        System.out.println("Each additional plot costs more energy and credits than the last.");
+        System.out.println("Each additional plot requires more resources than the last.");
 
         // Check resources
         if (!hasResourcesForGardenPlot(player, plotCreditCost, plotNRGCost, scanner)) {
@@ -192,7 +243,8 @@ public class BuildingActions {
             player.setHasBuiltExtraPlot(true); // Track for hint system
 
             System.out.println("\n✅ You dug a new garden plot!");
-            System.out.println("Your garden now has " + (currentPlots + 1) + " total plots.");
+            System.out.println("Your garden now has " + (regularPlotCount + 1) + " regular plots.");
+            System.out.println("(Total plots including flower pots: " + (currentPlots + 1) + ")");
             System.out.println();
             System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
 

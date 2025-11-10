@@ -2,8 +2,7 @@
  * Created: 6/18/2024
  * Last Updated: 11/09/2025
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
- * 
- * REFACTORING NOTES:
+ * * REFACTORING NOTES:
  * - Extracted water and weed garden functionality into GardenActions.java
  * - Extracted plant menu functionality into PlantingActions.java
  * - Extracted build menu functionality into BuildingActions.java
@@ -60,6 +59,7 @@ public class sunflowerSimulator {
 			System.out.println("You start with " + player.getCredits() + " credits to buy seeds.");
 
 			// Add a starting flower seed to the player's inventory
+			// Assuming FlowerInstance is a class that implements/extends Flower
 			FlowerInstance starterSeed = new FlowerInstance(
 					"Mammoth Sunflower", "Seed", 0, 10, 1, 5);
 			player.addToInventory(starterSeed);
@@ -98,11 +98,12 @@ public class sunflowerSimulator {
 			System.out.println("X: Save & Exit Game");
 
 			System.out.print("\nEnter your choice: ");
-			String actionMenuChoice = scanner.next();
-			scanner.nextLine(); // Clear input buffer
+			// FIX: Changed scanner.next() followed by scanner.nextLine() 
+			// to just scanner.nextLine() for consistent input clearing.
+			String actionMenuChoice = scanner.nextLine(); 
 
 			// Process menu choice
-			switch(actionMenuChoice) {
+			switch(actionMenuChoice.toUpperCase()) {
 
 			case "0": // Go to bed
 				handleBedtimeMenu(player, scanner);
@@ -144,8 +145,7 @@ public class sunflowerSimulator {
 				player = JournalActions.handleJournal(player, scanner);
 				break;
 
-			case "X":
-			case "x": // Save & Exit
+			case "X": // Save & Exit
 				System.out.println("Saving game and exiting...");
 				Journal.addJournalEntry(player, "Ended gardening session on day " + player.getDay() + ".");
 				if (Journal.saveGame(player)) {
@@ -186,8 +186,9 @@ public class sunflowerSimulator {
 		System.out.println("2: Save & exit game");
 
 		System.out.print("\nEnter your choice: ");
-		String bedChoice = scanner.next();
-		scanner.nextLine(); // Clear buffer
+		// FIX: Changed scanner.next() followed by scanner.nextLine() 
+		// to just scanner.nextLine() for consistent input clearing.
+		String bedChoice = scanner.nextLine(); 
 
 		switch (bedChoice) {
 		case "1": // Go to bed and continue
