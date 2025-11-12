@@ -5,6 +5,7 @@
  * UPDATES:
  * - Fixed to allow placing occupied flower pots from backpack (check #1)
  * - Prevents planting in already-occupied flower pots (check #2)
+ * - Added soil quality requirement checks and feedback
  */
 
 import java.util.ArrayList;
@@ -292,7 +293,7 @@ public class PlantingActions {
 
         Flower selectedSeed = availableSeeds.get(seedChoice - 1);
 
-        // Check flower pot restrictions
+        // Check flower pot restrictions and soil quality
         if (!canPlantInPlot(selectedPlot, selectedSeed)) {
             return false;
         }
@@ -322,6 +323,12 @@ public class PlantingActions {
 
         System.out.print(index + ": " + seed.getName() + " " + stars + " - Value: " + seed.getCost());
 
+        // Check soil quality requirements
+        if (selectedPlot != null && !selectedPlot.hasSufficientSoilQuality(seed)) {
+            String requiredSoil = getRequiredSoilQuality(difficulty);
+            System.out.print(" [❌ Needs " + requiredSoil + " soil, have " + selectedPlot.getSoilQuality() + "]");
+        }
+        
         // Show if seed can't be planted in flower pot
         if (selectedPlot != null && selectedPlot.isFlowerPot() && !selectedPlot.canPlantInFlowerPot(seed)) {
             if (difficulty >= 4) {
@@ -335,15 +342,40 @@ public class PlantingActions {
     }
     
     /**
+     * Gets the minimum required soil quality for a given difficulty
+     * @param difficulty The flower difficulty (1-5)
+     * @return Description of required soil
+     */
+    private static String getRequiredSoilQuality(int difficulty) {
+        switch (difficulty) {
+            case 5: return "Great or Magic";
+            case 4: return "Good, Great, or Magic";
+            case 3: return "Average or better";
+            default: return "Any";
+        }
+    }
+    
+    /**
      * Checks if a seed can be planted in the selected plot
      * @param selectedPlot The plot to plant in
      * @param selectedSeed The seed to plant
      * @return true if planting is allowed
      */
     private static boolean canPlantInPlot(gardenPlot selectedPlot, Flower selectedSeed) {
+        int difficulty = FlowerRegistry.getFlowerDifficulty(selectedSeed.getName());
+        
+        // Check soil quality first
+        if (!selectedPlot.hasSufficientSoilQuality(selectedSeed)) {
+            System.out.println("\n❌ The soil quality is not good enough for this flower!");
+            String requiredSoil = getRequiredSoilQuality(difficulty);
+            System.out.println("   Required: " + requiredSoil);
+            System.out.println("   Current: " + selectedPlot.getSoilQuality());
+            System.out.println("   💡 Tip: Fertilize plots daily for a small chance to upgrade soil quality!");
+            return false;
+        }
+        
         if (selectedPlot.isFlowerPot() && !selectedPlot.canPlantInFlowerPot(selectedSeed)) {
             System.out.println("\n❌ This flower can't be planted in a flower pot!");
-            int difficulty = FlowerRegistry.getFlowerDifficulty(selectedSeed.getName());
             String species = FlowerRegistry.getFlowerInfo(selectedSeed.getName());
 
             if (difficulty >= 4) {
