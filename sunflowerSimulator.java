@@ -1,6 +1,6 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 11/09/2025
+ * Last Updated: 11/11/2025
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * * REFACTORING NOTES:
  * - Extracted water and weed garden functionality into GardenActions.java
@@ -13,6 +13,7 @@
  * - Extracted journal functionality into JournalActions.java
  * - Main file now focuses on core game loop and day advancement
  * - Maintained all original gameplay and flavor text
+ * * FIX: Now resets shop inventory when the day advances.
  */
 
 import java.util.Scanner;
@@ -59,7 +60,6 @@ public class sunflowerSimulator {
 			System.out.println("You start with " + player.getCredits() + " credits to buy seeds.");
 
 			// Add a starting flower seed to the player's inventory
-			// Assuming FlowerInstance is a class that implements/extends Flower
 			FlowerInstance starterSeed = new FlowerInstance(
 					"Mammoth Sunflower", "Seed", 0, 10, 1, 5);
 			player.addToInventory(starterSeed);
@@ -98,10 +98,9 @@ public class sunflowerSimulator {
 			System.out.println("X: Save & Exit Game");
 
 			System.out.print("\nEnter your choice: ");
-			// FIX: Changed scanner.next() followed by scanner.nextLine() 
-			// to just scanner.nextLine() for consistent input clearing.
-			String actionMenuChoice = scanner.nextLine(); 
-
+			String actionMenuChoice = scanner.next();
+			scanner.nextLine(); // Clear the buffer
+			
 			// Process menu choice
 			switch(actionMenuChoice.toUpperCase()) {
 
@@ -186,9 +185,8 @@ public class sunflowerSimulator {
 		System.out.println("2: Save & exit game");
 
 		System.out.print("\nEnter your choice: ");
-		// FIX: Changed scanner.next() followed by scanner.nextLine() 
-		// to just scanner.nextLine() for consistent input clearing.
-		String bedChoice = scanner.nextLine(); 
+		String bedChoice = scanner.next();
+		scanner.nextLine(); // Clear the buffer
 
 		switch (bedChoice) {
 		case "1": // Go to bed and continue
@@ -240,9 +238,9 @@ public class sunflowerSimulator {
 
 		if (dreamOrHint != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("╔══════════════════════════════════╗");
+			System.out.println("╔═══════════════════════════════════╗");
 			System.out.println(dreamOrHint);
-			System.out.println("╚══════════════════════════════════╝");
+			System.out.println("╚═══════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
@@ -258,6 +256,9 @@ public class sunflowerSimulator {
 
 		// Advance to next day
 		player.advanceDay();
+        // Reset the shop inventory for the new day
+		ShopActions.resetShopInventory(); 
+        
 		System.out.println("\n🌅 Day " + player.getDay() + " begins.");
 		System.out.println("You feel refreshed! (NRG restored to " + player.getNRG() + ")");
 

@@ -1,10 +1,10 @@
 /* FlowerRegistry.java
  * Loads and manages flower data from CSV file
  * Provides factory methods to create flower instances
- * 
- * FIXES APPLIED:
+ * * FIXES APPLIED:
  * - createSeed() now properly creates different flower types based on species
  * - Added detailed comments explaining the factory pattern
+ * - ADDED: getRandomShopSelection for dynamic shop menu with difficulty weighting
  */
 
 import java.io.*;
@@ -94,16 +94,13 @@ public class FlowerRegistry {
     
     /**
      * Creates a new flower seed instance from the database
-     * 
-     * FACTORY PATTERN: This method acts as a factory, creating the appropriate
+     * * FACTORY PATTERN: This method acts as a factory, creating the appropriate
      * flower subclass based on the species data from the CSV. Currently all flowers
      * use MammothSunflower as the base class, but this can be extended.
-     * 
-     * BUG FIX: The flower's name is now properly set to match the CSV name.
+     * * BUG FIX: The flower's name is now properly set to match the CSV name.
      * Previously, all flowers were created as "Mammoth Sunflower" regardless of
      * which flower type was purchased from the shop.
-     * 
-     * @param flowerName The name of the flower (must match CSV exactly)
+     * * @param flowerName The name of the flower (must match CSV exactly)
      * @return A new Flower object in "Seed" stage, or null if not found
      */
     public static Flower createSeed(String flowerName) {
@@ -282,5 +279,80 @@ public class FlowerRegistry {
         info.append("Growth Time: ").append(data.daysToMatured).append(" days\n");
         
         return info.toString();
+    }
+    
+    /**
+     * Generates a random, weighted selection of flowers for the shop.
+     * Flowers with lower difficulty have a higher chance of being selected.
+     * * @param count The number of unique flowers to select (e.g., 4 or 5).
+     * @param maxDifficulty The maximum difficulty to include in the selection pool (e.g., 5 to include all).
+     * @return A list of unique flower names for the shop.
+     */
+    public static List<String> getRandomShopSelection(int count, int maxDifficulty) {
+        if (!isLoaded) {
+            loadFlowerData();
+        }
+        
+        // 1. Create a weighted pool of all flowers up to maxDifficulty
+        List<String> weightedPool = new ArrayList<>();
+        Random rand = new Random();
+
+        // Check if the database is empty before proceeding
+        if (flowerDatabase.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Weighting: weight = maxDifficulty + 1 - currentDifficulty
+        // e.g., if maxDiff=5: Diff 1 gets weight 5, Diff 5 gets weight 1.
+        for (FlowerData data : flowerDatabase.values()) {
+            if (data.difficulty > 0 && data.difficulty <= maxDifficulty) {
+                int weight = maxDifficulty + 1 - data.difficulty;
+                for (int i = 0; i < weight; i++) {
+                    weightedPool.add(data.name);
+                }
+            }
+        }
+        
+        // Safety check: If the weighting produced an empty pool (should not happen if difficulty 1 flowers exist)
+        if (weightedPool.isEmpty()) {
+            // Fallback: Use all available flowers without weighting
+            for (FlowerData data : flowerDatabase.values()) {
+                if (data.difficulty > 0) {
+                    weightedPool.add(data.name);
+                }
+            }
+        }
+        
+        // 2. Select 'count' unique flowers from the weighted pool
+        List<String> shopSelection = new ArrayList<>();
+        
+        // Safety check to ensure we don't try to select more items than available unique flowers
+        List<String> uniqueFlowers = new ArrayList<>(flowerDatabase.keySet());
+        count = Math.min(count, uniqueFlowers.size());
+
+        while (shopSelection.size() < count && !weightedPool.isEmpty()) {
+            // Pick a random index from the weighted pool
+            int randomIndex = rand.nextInt(weightedPool.size());
+            String chosenFlower = weightedPool.get(randomIndex);
+            
+            // Only add if it's not already in the final selection
+            if (!shopSelection.contains(chosenFlower)) {
+                shopSelection.add(chosenFlower);
+            }
+            
+            // Remove the specific instance chosen to reduce its weight in subsequent draws
+            // This is a more subtle way of managing the weighted pool for uniqueness
+            weightedPool.remove(randomIndex);
+        }
+        
+        // Fallback: If the pool ran out of items, fill the remaining slots with non-weighted random picks.
+        while (shopSelection.size() < count) {
+             String fallbackFlower = uniqueFlowers.get(rand.nextInt(uniqueFlowers.size()));
+             if (!shopSelection.contains(fallbackFlower)) {
+                 shopSelection.add(fallbackFlower);
+             }
+        }
+        
+        return shopSelection;
     }
 }
