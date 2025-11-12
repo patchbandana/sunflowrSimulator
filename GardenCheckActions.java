@@ -2,12 +2,9 @@
  * Handles garden checking and plot-specific actions
  * Created to modularize sunflowerSimulator.java
  * 
- * Includes:
- * - Garden display
- * - Water single plot
- * - Weed single plot
- * - Fertilize single plot
- * - Harvest single plot (with flower pot mechanics)
+ * UPDATES:
+ * - Modified harvest to allow picking up any flower pot + plant at any stage (fix #3)
+ * - Flower pots can always be picked up with their contents
  */
 
 import java.util.List;
@@ -37,6 +34,7 @@ public class GardenCheckActions {
         System.out.println("2: Weed a plot");
         System.out.println("3: Fertilize a plot");
         System.out.println("4: Harvest a plant");
+        System.out.println("5: Pick up flower pot (with plant)");
         System.out.println("0: Return to main menu");
 
         System.out.print("\nEnter your choice: ");
@@ -85,6 +83,10 @@ public class GardenCheckActions {
 
         case "4": // Harvest
             harvestPlot(player, selectedPlot, scanner);
+            break;
+            
+        case "5": // Pick up flower pot (fix #3)
+            pickUpFlowerPot(player, selectedPlot, scanner);
             break;
 
         default:
@@ -162,8 +164,8 @@ public class GardenCheckActions {
     }
     
     /**
-     * Harvests a plant from a specific plot
-     * Includes special flower pot behavior for seeds/seedlings
+     * Harvests a plant from a specific plot (for regular plots only)
+     * For flower pots, use pickUpFlowerPot instead
      * @param player The player
      * @param selectedPlot The plot to harvest from
      * @param scanner Scanner for user input
@@ -174,60 +176,93 @@ public class GardenCheckActions {
             return;
         }
 
+        if (selectedPlot.isFlowerPot()) {
+            System.out.println("This is a flower pot! Use option 5 to pick it up with the plant.");
+            return;
+        }
+
         Flower plant = selectedPlot.getPlantedFlower();
         String growthStage = plant.getGrowthStage();
 
         if (growthStage.equals("Seed") || growthStage.equals("Seedling")) {
-            // SPECIAL FLOWER POT BEHAVIOR
-            if (selectedPlot.isFlowerPot()) {
-                System.out.println("This plant is still young.");
-                System.out.println("🪴 Since it's in a flower pot, you can harvest it AND take the pot with you!");
-                System.out.print("Harvest and pack the flower pot? (yes/no): ");
-                String confirm = scanner.nextLine().toLowerCase();
+            System.out.println("This plant is too young to harvest!");
+            return;
+        }
 
-                if (confirm.equals("yes")) {
-                    // Harvest the flower
-                    Flower harvestedFlower = selectedPlot.harvestFlower();
-                    player.addToInventory(harvestedFlower);
+        // Regular harvest for Bloomed/Matured/Withered/Mutated
+        Flower harvestedFlower = selectedPlot.harvestFlower();
+        player.addToInventory(harvestedFlower);
 
-                    // Remove the flower pot from garden plots
-                    player.getGardenPlots().remove(selectedPlot);
+        System.out.println("You harvested the " + harvestedFlower.getName() + 
+                " (" + harvestedFlower.getGrowthStage() + ").");
+        System.out.println("It has been added to your inventory.");
 
-                    // Add the empty flower pot back to inventory
-                    gardenPlot emptyPot = new gardenPlot(true);
-                    player.addToInventory(emptyPot);
-
-                    System.out.println("✅ You harvested the " + harvestedFlower.getName() + 
-                            " (" + harvestedFlower.getGrowthStage() + ").");
-                    System.out.println("🪴 The flower pot has been returned to your inventory!");
-
-                    player.setNRG(player.getNRG() - 2);
-                    System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
-                    Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
-                            " (" + harvestedFlower.getGrowthStage() + ") and packed the flower pot.");
-                } else {
-                    System.out.println("Harvest cancelled.");
-                }
+        player.setNRG(player.getNRG() - 2);
+        System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
+        Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
+                " (" + harvestedFlower.getGrowthStage() + ").");
+    }
+    
+    /**
+     * Picks up a flower pot with its plant at any stage (fix #3)
+     * The entire pot + plant is moved to inventory
+     * @param player The player
+     * @param selectedPlot The plot to pick up
+     * @param scanner Scanner for user input
+     */
+    private static void pickUpFlowerPot(Player1 player, gardenPlot selectedPlot, Scanner scanner) {
+        if (!selectedPlot.isFlowerPot()) {
+            System.out.println("This is not a flower pot! You can only pick up flower pots.");
+            return;
+        }
+        
+        if (!selectedPlot.isOccupied()) {
+            System.out.println("This flower pot is empty! Use the build menu to pick up empty pots.");
+            System.out.print("Pick up the empty pot? (yes/no): ");
+            String confirm = scanner.nextLine().toLowerCase();
+            
+            if (confirm.equals("yes")) {
+                player.getGardenPlots().remove(selectedPlot);
+                player.addToInventory(selectedPlot);
+                
+                System.out.println("✅ Empty flower pot added to your inventory!");
+                player.setNRG(player.getNRG() - 1);
+                System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
+                Journal.addJournalEntry(player, "Picked up an empty flower pot.");
             } else {
-                System.out.println("This plant is too young to harvest!");
+                System.out.println("Cancelled.");
             }
+            return;
+        }
+        
+        Flower plant = selectedPlot.getPlantedFlower();
+        
+        System.out.println("\n🪴 This flower pot contains: " + plant.getName() + 
+                " (" + plant.getGrowthStage() + ")");
+        System.out.println("Days planted: " + plant.getDaysPlanted());
+        System.out.println("Durability: " + plant.getDurability());
+        System.out.println("\nPick up the entire flower pot with the plant? (yes/no): ");
+        
+        String confirm = scanner.nextLine().toLowerCase();
+        
+        if (confirm.equals("yes")) {
+            // Remove from garden plots
+            player.getGardenPlots().remove(selectedPlot);
+            
+            // Add entire pot (with plant) to inventory
+            player.addToInventory(selectedPlot);
+            
+            System.out.println("✅ You picked up the flower pot with " + plant.getName() + 
+                    " (" + plant.getGrowthStage() + ")!");
+            System.out.println("The entire pot has been added to your inventory.");
+            
+            player.setNRG(player.getNRG() - 1);
+            System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
+            
+            Journal.addJournalEntry(player, "Picked up a flower pot with " + plant.getName() + 
+                    " (" + plant.getGrowthStage() + ").");
         } else {
-            // Regular harvest for Bloomed/Matured/Withered/Mutated
-            Flower harvestedFlower = selectedPlot.harvestFlower();
-            player.addToInventory(harvestedFlower);
-
-            System.out.println("You harvested the " + harvestedFlower.getName() + 
-                    " (" + harvestedFlower.getGrowthStage() + ").");
-            System.out.println("It has been added to your inventory.");
-
-            if (selectedPlot.isFlowerPot()) {
-                System.out.println("🪴 The flower pot remains in your garden for replanting.");
-            }
-
-            player.setNRG(player.getNRG() - 2);
-            System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
-            Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
-                    " (" + harvestedFlower.getGrowthStage() + ").");
+            System.out.println("Pickup cancelled.");
         }
     }
 }

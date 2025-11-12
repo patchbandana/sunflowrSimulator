@@ -1,6 +1,10 @@
 /* PlantingActions.java
  * Handles all planting-related actions including seed selection and flower pot placement
  * Created to modularize sunflowerSimulator.java
+ * 
+ * UPDATES:
+ * - Fixed to allow placing occupied flower pots from backpack (check #1)
+ * - Prevents planting in already-occupied flower pots (check #2)
  */
 
 import java.util.ArrayList;
@@ -29,32 +33,49 @@ public class PlantingActions {
             }
         }
 
-        // Check if player has flower pots in inventory
+        // Check if player has EMPTY flower pots in inventory (fix #2)
         List<gardenPlot> availableFlowerPots = new ArrayList<>();
         for (Object item : player.getInventory()) {
-            if (item instanceof gardenPlot && ((gardenPlot)item).isFlowerPot()) {
+            if (item instanceof gardenPlot && ((gardenPlot)item).isFlowerPot() && !((gardenPlot)item).isOccupied()) {
                 availableFlowerPots.add((gardenPlot)item);
             }
         }
+        
+        // Check if player has OCCUPIED flower pots in inventory (fix #1)
+        List<gardenPlot> occupiedFlowerPots = new ArrayList<>();
+        for (Object item : player.getInventory()) {
+            if (item instanceof gardenPlot && ((gardenPlot)item).isFlowerPot() && ((gardenPlot)item).isOccupied()) {
+                occupiedFlowerPots.add((gardenPlot)item);
+            }
+        }
 
-        if (availableSeeds.isEmpty()) {
-            System.out.println("You don't have any seeds to plant! Visit the shop to buy some.");
+        if (availableSeeds.isEmpty() && occupiedFlowerPots.isEmpty()) {
+            System.out.println("You don't have any seeds to plant or occupied flower pots to place! Visit the shop to buy some.");
             return false;
         }
 
         // Display garden plots and options
         displayGardenPlots(player.getGardenPlots());
 
-        // Show option to place flower pot if player has any
-        if (!availableFlowerPots.isEmpty()) {
-            System.out.println("\n🪴 You have " + availableFlowerPots.size() + " flower pot(s) in your backpack!");
-            System.out.println("You can place a flower pot and plant in it.");
-        }
-
+        // Show options
         System.out.println("\nWhat would you like to do?");
-        System.out.println("1: Plant in an existing plot");
-        if (!availableFlowerPots.isEmpty()) {
-            System.out.println("2: Place a flower pot and plant in it");
+        int optionNum = 1;
+        
+        boolean canPlantSeed = !availableSeeds.isEmpty();
+        boolean hasEmptyPot = !availableFlowerPots.isEmpty();
+        boolean hasOccupiedPot = !occupiedFlowerPots.isEmpty();
+        
+        if (canPlantSeed) {
+            System.out.println(optionNum + ": Plant a seed in an existing plot");
+            optionNum++;
+        }
+        if (canPlantSeed && hasEmptyPot) {
+            System.out.println(optionNum + ": Place an empty flower pot and plant a seed in it");
+            optionNum++;
+        }
+        if (hasOccupiedPot) {
+            System.out.println(optionNum + ": Place an occupied flower pot in the garden");
+            optionNum++;
         }
         System.out.println("0: Cancel");
 
@@ -66,35 +87,101 @@ public class PlantingActions {
             return false;
         }
 
-        gardenPlot selectedPlot = null;
-        boolean placingFlowerPot = false;
-
-        if (plantChoice.equals("2") && !availableFlowerPots.isEmpty()) {
-            // Place flower pot from inventory
-            selectedPlot = placeFlowerPotFromInventory(player, availableFlowerPots);
-            placingFlowerPot = true;
-        } else if (plantChoice.equals("1")) {
-            // Select existing plot
-            selectedPlot = selectExistingPlot(player.getGardenPlots(), scanner);
-            if (selectedPlot == null) {
-                return false; // User cancelled or invalid selection
-            }
-        } else {
+        // Parse choice and handle accordingly
+        int choice;
+        try {
+            choice = Integer.parseInt(plantChoice);
+        } catch (NumberFormatException e) {
             System.out.println("Invalid choice.");
             return false;
         }
 
-        // Select and plant seed
-        boolean success = selectAndPlantSeed(player, selectedPlot, availableSeeds, scanner);
+        // Map choice to action
+        int currentOption = 1;
         
-        // If planting failed and we just placed a flower pot, return it to inventory
-        if (!success && placingFlowerPot) {
-            player.getGardenPlots().remove(selectedPlot);
-            player.addToInventory(selectedPlot);
-            System.out.println("Flower pot returned to inventory.");
+        // Option: Plant in existing plot
+        if (canPlantSeed && choice == currentOption) {
+            gardenPlot selectedPlot = selectExistingPlot(player.getGardenPlots(), scanner);
+            if (selectedPlot == null) {
+                return false;
+            }
+            return selectAndPlantSeed(player, selectedPlot, availableSeeds, scanner);
+        }
+        if (canPlantSeed) currentOption++;
+        
+        // Option: Place empty pot and plant
+        if (canPlantSeed && hasEmptyPot && choice == currentOption) {
+            gardenPlot selectedPlot = placeFlowerPotFromInventory(player, availableFlowerPots);
+            boolean success = selectAndPlantSeed(player, selectedPlot, availableSeeds, scanner);
+            if (!success) {
+                // Return pot to inventory if planting failed
+                player.getGardenPlots().remove(selectedPlot);
+                player.addToInventory(selectedPlot);
+                System.out.println("Flower pot returned to inventory.");
+            }
+            return success;
+        }
+        if (canPlantSeed && hasEmptyPot) currentOption++;
+        
+        // Option: Place occupied pot (fix #1)
+        if (hasOccupiedPot && choice == currentOption) {
+            return placeOccupiedFlowerPot(player, occupiedFlowerPots, scanner);
+        }
+
+        System.out.println("Invalid choice.");
+        return false;
+    }
+    
+    /**
+     * Places an occupied flower pot from inventory into the garden (fix #1)
+     * @param player The player
+     * @param occupiedFlowerPots List of occupied pots in inventory
+     * @param scanner Scanner for input
+     * @return true if successful
+     */
+    private static boolean placeOccupiedFlowerPot(Player1 player, List<gardenPlot> occupiedFlowerPots, Scanner scanner) {
+        System.out.println("\n🪴 Occupied Flower Pots in Inventory:");
+        for (int i = 0; i < occupiedFlowerPots.size(); i++) {
+            gardenPlot pot = occupiedFlowerPots.get(i);
+            Flower plant = pot.getPlantedFlower();
+            System.out.println((i + 1) + ": " + plant.getName() + " (" + plant.getGrowthStage() + 
+                    ") - Days: " + plant.getDaysPlanted());
         }
         
-        return success;
+        System.out.print("\nWhich flower pot would you like to place? (1-" + occupiedFlowerPots.size() + 
+                ", or 0 to cancel): ");
+        
+        int potChoice;
+        try {
+            potChoice = Integer.parseInt(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input.");
+            return false;
+        }
+        
+        if (potChoice == 0) {
+            System.out.println("Placement cancelled.");
+            return false;
+        }
+        
+        if (potChoice < 1 || potChoice > occupiedFlowerPots.size()) {
+            System.out.println("Invalid choice.");
+            return false;
+        }
+        
+        gardenPlot selectedPot = occupiedFlowerPots.get(potChoice - 1);
+        Flower plant = selectedPot.getPlantedFlower();
+        
+        // Remove from inventory and add to garden
+        player.removeFromInventory(selectedPot);
+        player.addFlowerPotToGarden(selectedPot);
+        
+        System.out.println("\n✅ You placed the flower pot with " + plant.getName() + 
+                " (" + plant.getGrowthStage() + ") in your garden!");
+        
+        Journal.addJournalEntry(player, "Placed an occupied flower pot with " + plant.getName() + " in the garden.");
+        
+        return true;
     }
     
     /**
