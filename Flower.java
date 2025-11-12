@@ -3,6 +3,9 @@
  * Description: The abstract flower class from which all flowers will extend.
  * Encapsulates the general idea of a flower.
  * Flowers will inherit code from this superclass for use in future/smaller classes
+ * 
+ * UPDATES:
+ * - Added auto-wither when durability reaches 0
  */
 
 
@@ -91,6 +94,13 @@ public abstract class Flower {
 	 */
 	public void setDurability(double durability) {
 		this.durability = durability;
+		
+		// If durability reaches 0 or below, immediately wither the plant
+		// Seeds cannot wither (they're not planted yet)
+		// Already-withered plants don't need to wither again
+		if (this.durability <= 0 && !this.growthStage.equals("Withered") && !this.growthStage.equals("Seed")) {
+			this.growthStage = "Withered";
+		}
 	}
 	
 	/**Returns the cost of the flower in different forms. (Seed, seedling, bloomed, matured, withered, mutated; Buy/Sell)

@@ -6,6 +6,8 @@
  * - Added flower pot functionality with isFlowerPot flag
  * - Flower pots have special rules: no weeding, double durability penalty, restrictions on plant types
  * - Added methods to check if a flower can be planted in a flower pot
+ * - Added soil quality system with 5 tiers and upgrade mechanics
+ * - Added soil quality requirements for planting based on difficulty
  */
 
 public class gardenPlot {
@@ -16,7 +18,7 @@ public class gardenPlot {
     private boolean isWatered;
     private boolean isWeeded;
     private boolean isFertilized;
-    private String soilQuality; // "Poor", "Average", "Good", "Excellent"
+    private String soilQuality; // "Bad", "Average", "Good", "Great", "Magic"
     
     // NEW: Flower pot functionality
     private boolean isFlowerPot; // Is this plot actually a flower pot?
@@ -42,7 +44,7 @@ public class gardenPlot {
         this.isFlowerPot = isFlowerPot;
         if (isFlowerPot) {
             this.isWeeded = true; // Flower pots don't get weeds
-            this.soilQuality = "Good"; // Flower pots have controlled soil
+            this.soilQuality = "Good"; // Flower pots have good soil
         }
     }
     
@@ -66,6 +68,31 @@ public class gardenPlot {
     }
     
     /**
+     * Checks if a flower can be planted in this plot based on soil quality
+     * 5★ flowers need Great or Magic soil
+     * 4★ flowers need Good, Great, or Magic soil
+     * 3★ flowers need Average or better soil
+     * 1-2★ flowers can be planted in any soil
+     * 
+     * @param flower The flower to check
+     * @return true if soil quality is sufficient
+     */
+    public boolean hasSufficientSoilQuality(Flower flower) {
+        int difficulty = FlowerRegistry.getFlowerDifficulty(flower.getName());
+        
+        switch (difficulty) {
+            case 5:
+                return soilQuality.equals("Great") || soilQuality.equals("Magic");
+            case 4:
+                return soilQuality.equals("Good") || soilQuality.equals("Great") || soilQuality.equals("Magic");
+            case 3:
+                return !soilQuality.equals("Bad");
+            default: // 1-2 star
+                return true; // Can plant in any soil
+        }
+    }
+    
+    /**
      * Checks if a flower can be planted in this flower pot
      * Flower pots cannot contain:
      * - Bush or Tree subspecies
@@ -76,7 +103,7 @@ public class gardenPlot {
      */
     public boolean canPlantInFlowerPot(Flower flower) {
         if (!isFlowerPot) {
-            return true; // Regular plots can plant anything
+            return true; // Regular plots can plant anything (if soil is good enough)
         }
         
         // Check difficulty rating
@@ -107,7 +134,7 @@ public class gardenPlot {
     /**
      * Plants a flower in this garden plot
      * @param flower The flower to plant
-     * @return true if planting was successful, false if plot is already occupied
+     * @return true if planting was successful, false if plot is already occupied or soil insufficient
      */
     public boolean plantFlower(Flower flower) {
         // Check if plot is already occupied
@@ -117,6 +144,11 @@ public class gardenPlot {
         
         // Can only plant seeds
         if (!flower.getGrowthStage().equals("Seed")) {
+            return false;
+        }
+        
+        // Check soil quality requirements
+        if (!hasSufficientSoilQuality(flower)) {
             return false;
         }
         
@@ -274,7 +306,7 @@ public class gardenPlot {
             // FLOWER POT: Double durability penalty if not watered
             if (isFlowerPot) {
                 double currentDurability = plantedFlower.getDurability();
-                plantedFlower.setDurability(currentDurability - 1); // Extra -1 durability
+                plantedFlower.setDurability(currentDurability - 1); // Extra -1 durability (auto-withers at 0)
             }
         }
         
@@ -336,11 +368,10 @@ public class gardenPlot {
             
             if (Math.random() < damageChance) {
                 double currentDurability = plantedFlower.getDurability();
-                plantedFlower.setDurability(currentDurability - 1);
+                plantedFlower.setDurability(currentDurability - 1); // Auto-withers at 0 via setDurability
                 
-                // If durability reaches 0, plant withers prematurely
-                if (plantedFlower.getDurability() <= 0) {
-                    plantedFlower.setGrowthStage("Withered");
+                // Check if plant withered to update didGrow flag
+                if (plantedFlower.getGrowthStage().equals("Withered")) {
                     didGrow = true; // Changed state, so return true
                 }
             }
@@ -359,7 +390,37 @@ public class gardenPlot {
             this.isFertilized = false;
         }
         
+        // Very low chance to upgrade soil quality when fertilized
+        if (this.isFertilized && Math.random() < 0.0075) { // 0.75% chance
+            upgradeSoilQuality();
+        }
+        
         return didGrow;
+    }
+    
+    /**
+     * Upgrades the soil quality by one tier (permanent upgrade)
+     * Progression: Bad -> Average -> Good -> Great -> Magic
+     */
+    private void upgradeSoilQuality() {
+        switch (soilQuality) {
+            case "Bad":
+                soilQuality = "Average";
+                break;
+            case "Average":
+                soilQuality = "Good";
+                break;
+            case "Good":
+                soilQuality = "Great";
+                break;
+            case "Great":
+                soilQuality = "Magic";
+                break;
+            case "Magic":
+                // Already at max, no upgrade
+                return;
+        }
+        // Soil upgraded (player will see this in garden check)
     }
     
     /**
@@ -428,9 +489,9 @@ public class gardenPlot {
         
         // Different icon for flower pot vs regular plot
         if (isFlowerPot) {
-            sb.append("🪴 Flower Pot [Soil: ").append(soilQuality).append("]").append("\n");
+            sb.append("🪴 Flower Pot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
         } else {
-            sb.append("📦 Garden Plot [Soil: ").append(soilQuality).append("]").append("\n");
+            sb.append("📦 Garden Plot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
         }
         
         if (isOccupied()) {
@@ -451,5 +512,20 @@ public class gardenPlot {
         sb.append("  Fertilized: ").append(isFertilized ? "✅" : "❌").append("\n");
         
         return sb.toString();
+    }
+    
+    /**
+     * Gets an emoji representation of soil quality
+     * @return Emoji for current soil quality
+     */
+    private String getSoilQualityEmoji() {
+        switch (soilQuality) {
+            case "Bad": return "💀";
+            case "Average": return "🌱";
+            case "Good": return "🌿";
+            case "Great": return "✨";
+            case "Magic": return "🔮";
+            default: return "❓";
+        }
     }
 }

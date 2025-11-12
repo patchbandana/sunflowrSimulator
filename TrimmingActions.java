@@ -2,20 +2,45 @@
  * Handles all plant trimming actions with enhanced mechanics
  * Created to modularize sunflowerSimulator.java
  * 
- * TRIMMING MECHANICS:
- * - Bloomed: Moderate durability increase
- * - Matured: Durability increase + 1 bloomed flower (plant stays in ground)
- * - Mutated: 5-8 bloomed flowers (no durability increase, plant stays in ground)
+ * TRIMMING MECHANICS (UPDATED):
+ * - Bloomed: Durability +2 (only stage that increases durability)
+ * - Matured: 1 bloomed flower (NO durability increase)
+ * - Mutated: 5-8 bloomed flowers (NO durability increase)
+ * - Withered: Same as harvesting (removes plant, adds to inventory)
+ * - Each plant can only be trimmed ONCE per day
+ * 
+ * UPDATES:
+ * - Added daily trim tracking (resets at day advancement)
+ * - Removed durability bonuses from matured/mutated stages
+ * - Trimming withered plants now harvests them
  */
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.Set;
 
 public class TrimmingActions {
     
     private static final Random random = new Random();
+    
+    // Track which plots have been trimmed today (plot index as key)
+    private static Set<Integer> trimmedPlotsToday = new HashSet<>();
+    private static int lastTrimDay = -1;
+    
+    /**
+     * Resets the daily trim tracker when a new day begins
+     * MUST be called from sunflowerSimulator.advanceDay()
+     * @param currentDay The current day number
+     */
+    public static void resetDailyTrims(int currentDay) {
+        if (currentDay != lastTrimDay) {
+            trimmedPlotsToday.clear();
+            lastTrimDay = currentDay;
+        }
+    }
     
     /**
      * Handles the complete trimming workflow
@@ -23,6 +48,9 @@ public class TrimmingActions {
      * @param scanner Scanner for user input
      */
     public static void handleTrimming(Player1 player, Scanner scanner) {
+        // Reset trim tracker if day has changed
+        resetDailyTrims(player.getDay());
+        
         if (player.getNRG() <= 0) {
             System.out.println("You're too tired to do that. You need to go to bed first!");
             return;
@@ -53,7 +81,7 @@ public class TrimmingActions {
     }
     
     /**
-     * Gets indices of all plots with trimmable plants
+     * Gets indices of all plots with trimmable plants (not already trimmed today)
      * @param player The player
      * @return List of plot indices that can be trimmed
      */
@@ -65,7 +93,10 @@ public class TrimmingActions {
             gardenPlot plot = gardenPlots.get(i);
             if (plot.isOccupied()) {
                 String stage = plot.getPlantedFlower().getGrowthStage();
-                if (stage.equals("Bloomed") || stage.equals("Matured") || stage.equals("Mutated")) {
+                // Include Withered in trimmable stages (it harvests instead)
+                if ((stage.equals("Bloomed") || stage.equals("Matured") || 
+                     stage.equals("Mutated") || stage.equals("Withered")) &&
+                    !trimmedPlotsToday.contains(i)) {
                     trimmablePlotIndices.add(i);
                 }
             }
@@ -90,7 +121,7 @@ public class TrimmingActions {
             if (plot.isOccupied()) {
                 Flower plant = plot.getPlantedFlower();
                 String stage = plant.getGrowthStage();
-                String trimInfo = getTrimInfo(stage);
+                String trimInfo = getTrimInfo(stage, trimmedPlotsToday.contains(i));
                 
                 System.out.println("Plot #" + (i+1) + " " + plotType + ": " + plant.getName() + 
                         " (" + stage + ")" + trimInfo);
@@ -103,16 +134,23 @@ public class TrimmingActions {
     /**
      * Gets descriptive trimming information for each growth stage
      * @param stage The growth stage
+     * @param alreadyTrimmed Whether this plant was already trimmed today
      * @return Description of what trimming will do
      */
-    private static String getTrimInfo(String stage) {
+    private static String getTrimInfo(String stage, boolean alreadyTrimmed) {
+        if (alreadyTrimmed) {
+            return " - [Already trimmed today]";
+        }
+        
         switch (stage) {
             case "Bloomed":
                 return " - Can be trimmed (Durability +2)";
             case "Matured":
-                return " - Can be trimmed (Durability +2, +1 Bloomed flower)";
+                return " - Can be trimmed (+1 Bloomed flower)";
             case "Mutated":
                 return " - Can be trimmed (5-8 Bloomed flowers!)";
+            case "Withered":
+                return " - Can be trimmed (harvests plant)";
             default:
                 return "";
         }
@@ -185,9 +223,18 @@ public class TrimmingActions {
                 trimMutatedPlant(player, plant, plantName);
                 break;
                 
+            case "Withered":
+                trimWitheredPlant(player, selectedPlot, plant, plantName);
+                break;
+                
             default:
                 System.out.println("This plant can't be trimmed right now.");
                 return;
+        }
+        
+        // Mark this plot as trimmed for today (unless it was withered and removed)
+        if (!stage.equals("Withered")) {
+            trimmedPlotsToday.add(plotIndex);
         }
         
         System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
@@ -195,7 +242,7 @@ public class TrimmingActions {
     }
     
     /**
-     * Handles trimming a bloomed plant
+     * Handles trimming a bloomed plant (ONLY stage that increases durability)
      * @param player The player
      * @param plant The plant being trimmed
      * @param plantName The plant's name
@@ -205,18 +252,19 @@ public class TrimmingActions {
         
         System.out.println("✨ The bloomed " + plantName + " looks healthier now!");
         System.out.println("   Durability increased by 2.");
+        System.out.println("   💡 Tip: Bloomed is the only stage where trimming increases durability!");
         
         Journal.addJournalEntry(player, "Trimmed a bloomed " + plantName + ".");
     }
     
     /**
-     * Handles trimming a matured plant
+     * Handles trimming a matured plant (NO durability increase)
      * @param player The player
      * @param plant The plant being trimmed
      * @param plantName The plant's name
      */
     private static void trimMaturedPlant(Player1 player, Flower plant, String plantName) {
-        plant.setDurability(plant.getDurability() + 2);
+        // NO durability increase for matured plants
         
         // Create a bloomed flower to add to inventory
         double bloomedValue = FlowerRegistry.getFlowerValue(plantName, "Bloomed");
@@ -232,21 +280,20 @@ public class TrimmingActions {
         player.addToInventory(bloomedFlower);
         
         System.out.println("🌸 You carefully trim the mature " + plantName + "!");
-        System.out.println("   Durability increased by 2.");
         System.out.println("   You harvested 1 bloomed " + plantName + " flower!");
-        System.out.println("   (The plant remains in the ground and continues growing)");
+        System.out.println("   (The plant remains in the ground but gains no durability)");
         
         Journal.addJournalEntry(player, "Trimmed a matured " + plantName + " and harvested 1 bloomed flower.");
     }
     
     /**
-     * Handles trimming a mutated plant
+     * Handles trimming a mutated plant (NO durability increase)
      * @param player The player
      * @param plant The plant being trimmed
      * @param plantName The plant's name
      */
     private static void trimMutatedPlant(Player1 player, Flower plant, String plantName) {
-        // Mutated plants yield 5-8 bloomed flowers but no durability increase
+        // Mutated plants yield 5-8 bloomed flowers but NO durability increase
         int flowerCount = 5 + random.nextInt(4); // 5-8 flowers
         double bloomedValue = FlowerRegistry.getFlowerValue(plantName, "Bloomed");
         
@@ -270,5 +317,25 @@ public class TrimmingActions {
         
         Journal.addJournalEntry(player, "Trimmed a mutated " + plantName + " and harvested " + 
                               flowerCount + " bloomed flowers!");
+    }
+    
+    /**
+     * Handles trimming a withered plant (same as harvesting - removes plant)
+     * @param player The player
+     * @param selectedPlot The plot containing the withered plant
+     * @param plant The plant being trimmed
+     * @param plantName The plant's name
+     */
+    private static void trimWitheredPlant(Player1 player, gardenPlot selectedPlot, 
+                                          Flower plant, String plantName) {
+        // Trimming a withered plant is the same as harvesting it
+        Flower harvestedFlower = selectedPlot.harvestFlower();
+        player.addToInventory(harvestedFlower);
+        
+        System.out.println("🥀 You trim away the withered " + plantName + ".");
+        System.out.println("   The plant has been removed and added to your inventory.");
+        System.out.println("   💡 Trimming withered plants is the same as harvesting them.");
+        
+        Journal.addJournalEntry(player, "Trimmed (harvested) a withered " + plantName + ".");
     }
 }

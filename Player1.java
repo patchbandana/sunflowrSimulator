@@ -5,6 +5,7 @@
  * UPDATES:
  * - Added tracking for flower pots crafted and placed
  * - Added methods to manage flower pot inventory and limits
+ * - Added soil quality upgrade notifications in advanceDay()
  */
 
 import java.util.ArrayList;
@@ -217,9 +218,19 @@ public class Player1 {
         this.day++;
         this.nrg = 10; // Refresh energy each day
         
-        // Advance all garden plots
-        for (gardenPlot plot : gardenPlots) {
+        // Advance all garden plots - track soil quality changes
+        for (int i = 0; i < gardenPlots.size(); i++) {
+            gardenPlot plot = gardenPlots.get(i);
+            String previousSoil = plot.getSoilQuality();
             boolean grew = plot.advanceDay();
+            String newSoil = plot.getSoilQuality();
+            
+            // Check if soil quality upgraded
+            if (!previousSoil.equals(newSoil)) {
+                String plotType = plot.isFlowerPot() ? "flower pot" : "plot #" + (i + 1);
+                addJournalEntry("✨ The soil in your " + plotType + " improved from " + 
+                              previousSoil + " to " + newSoil + "!");
+            }
             
             // Add journal entries about growth if a plant grew
             if (grew && plot.isOccupied()) {
