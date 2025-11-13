@@ -2,12 +2,12 @@
  * Description: Garden Plot class for the sunflowrSimulator
  * Represents a single plot of land where flowers can be planted
  * 
- * UPDATES:
- * - Added flower pot functionality with isFlowerPot flag
- * - Flower pots have special rules: no weeding, double durability penalty, restrictions on plant types
- * - Added methods to check if a flower can be planted in a flower pot
- * - Added soil quality system with 5 tiers and upgrade mechanics
- * - Added soil quality requirements for planting based on difficulty
+ * UPDATES (Pre-Release):
+ * - Added consecutive days without water tracking
+ * - Enhanced watering penalties (escalating damage, day 7 instant wither)
+ * - Added durability penalty for not weeding
+ * - Soil quality now affects mutation probability (Bad: 0.5x, Magic: 2x)
+ * - Soil quality now affects withering probability (Magic soil extends lifecycle)
  */
 
 public class gardenPlot {
@@ -20,8 +20,11 @@ public class gardenPlot {
     private boolean isFertilized;
     private String soilQuality; // "Bad", "Average", "Good", "Great", "Magic"
     
-    // NEW: Flower pot functionality
-    private boolean isFlowerPot; // Is this plot actually a flower pot?
+    // Flower pot functionality
+    private boolean isFlowerPot;
+    
+    // NEW: Track consecutive days without water for escalating penalties
+    private int consecutiveDaysWithoutWater;
     
     /**
      * Creates a new garden plot with default values
@@ -29,10 +32,11 @@ public class gardenPlot {
     public gardenPlot() {
         this.plantedFlower = null;
         this.isWatered = false;
-        this.isWeeded = true; // Start with a weeded plot
+        this.isWeeded = true;
         this.isFertilized = false;
         this.soilQuality = "Average";
-        this.isFlowerPot = false; // Default to regular plot
+        this.isFlowerPot = false;
+        this.consecutiveDaysWithoutWater = 0;
     }
     
     /**
@@ -43,39 +47,40 @@ public class gardenPlot {
         this();
         this.isFlowerPot = isFlowerPot;
         if (isFlowerPot) {
-            this.isWeeded = true; // Flower pots don't get weeds
-            this.soilQuality = "Good"; // Flower pots have good soil
+            this.isWeeded = true;
+            this.soilQuality = "Good";
         }
     }
     
     /**
-     * Checks if this is a flower pot
-     * @return true if this is a flower pot
+     * Gets consecutive days without water
+     * @return Number of consecutive days without water
      */
+    public int getConsecutiveDaysWithoutWater() {
+        return consecutiveDaysWithoutWater;
+    }
+    
+    /**
+     * Sets consecutive days without water (for save/load)
+     * @param days Number of days
+     */
+    public void setConsecutiveDaysWithoutWater(int days) {
+        this.consecutiveDaysWithoutWater = days;
+    }
+    
     public boolean isFlowerPot() {
         return isFlowerPot;
     }
     
-    /**
-     * Sets whether this is a flower pot
-     * @param isFlowerPot true to make this a flower pot
-     */
     public void setFlowerPot(boolean isFlowerPot) {
         this.isFlowerPot = isFlowerPot;
         if (isFlowerPot) {
-            this.isWeeded = true; // Flower pots don't get weeds
+            this.isWeeded = true;
         }
     }
     
     /**
      * Checks if a flower can be planted in this plot based on soil quality
-     * 5★ flowers need Great or Magic soil
-     * 4★ flowers need Good, Great, or Magic soil
-     * 3★ flowers need Average or better soil
-     * 1-2★ flowers can be planted in any soil
-     * 
-     * @param flower The flower to check
-     * @return true if soil quality is sufficient
      */
     public boolean hasSufficientSoilQuality(Flower flower) {
         int difficulty = FlowerRegistry.getFlowerDifficulty(flower.getName());
@@ -87,95 +92,64 @@ public class gardenPlot {
                 return soilQuality.equals("Good") || soilQuality.equals("Great") || soilQuality.equals("Magic");
             case 3:
                 return !soilQuality.equals("Bad");
-            default: // 1-2 star
-                return true; // Can plant in any soil
+            default:
+                return true;
         }
     }
     
     /**
      * Checks if a flower can be planted in this flower pot
-     * Flower pots cannot contain:
-     * - Bush or Tree subspecies
-     * - Flowers with difficulty >= 4
-     * 
-     * @param flower The flower to check
-     * @return true if the flower can be planted in this flower pot
      */
     public boolean canPlantInFlowerPot(Flower flower) {
         if (!isFlowerPot) {
-            return true; // Regular plots can plant anything (if soil is good enough)
+            return true;
         }
         
-        // Check difficulty rating
         int difficulty = FlowerRegistry.getFlowerDifficulty(flower.getName());
         if (difficulty >= 4) {
-            return false; // Too difficult for flower pot
+            return false;
         }
         
-        // Check if it's a bush or tree by getting the species from FlowerRegistry
-        // We need to check the CSV data for the species field
         String flowerName = flower.getName();
-        
-        // Get all flower names and check if this flower exists
         if (!FlowerRegistry.flowerExists(flowerName)) {
-            return true; // If we can't find it, allow it (shouldn't happen)
+            return true;
         }
         
-        // Check the species field - we'll need to expose this in FlowerRegistry
-        // For now, check if the name contains "Bush" or "Tree"
         String nameLower = flowerName.toLowerCase();
         if (nameLower.contains("bush") || nameLower.contains("tree")) {
-            return false; // Bush or tree species not allowed
+            return false;
         }
         
-        return true; // All checks passed
+        return true;
     }
     
-    /**
-     * Plants a flower in this garden plot
-     * @param flower The flower to plant
-     * @return true if planting was successful, false if plot is already occupied or soil insufficient
-     */
     public boolean plantFlower(Flower flower) {
-        // Check if plot is already occupied
         if (isOccupied()) {
             return false;
         }
         
-        // Can only plant seeds
         if (!flower.getGrowthStage().equals("Seed")) {
             return false;
         }
         
-        // Check soil quality requirements
         if (!hasSufficientSoilQuality(flower)) {
             return false;
         }
         
-        // Check flower pot restrictions
         if (isFlowerPot && !canPlantInFlowerPot(flower)) {
             return false;
         }
         
-        // Plant the flower - set it to planted and set days planted to 1
         flower.setDaysPlanted(1);
         this.plantedFlower = flower;
+        this.consecutiveDaysWithoutWater = 0; // Reset counter for new plant
         return true;
     }
     
-    /**
-     * Force plants a flower regardless of growth stage
-     * This is used by the save/load system to restore planted flowers
-     * @param flower The flower to force plant
-     */
     public void forcePlantFlower(Flower flower) {
         this.plantedFlower = flower;
     }
     
-    /**
-     * Harvests the flower from this garden plot
-     * @return The harvested flower, or null if there's nothing to harvest
-     */
     public Flower harvestFlower() {
         if (!isOccupied()) {
             return null;
@@ -183,101 +157,98 @@ public class gardenPlot {
         
         Flower harvestedFlower = this.plantedFlower;
         this.plantedFlower = null;
-        
-        // Reset plot state after harvesting
         this.isWatered = false;
-        
+        this.consecutiveDaysWithoutWater = 0; // Reset counter
         return harvestedFlower;
     }
     
-    /**
-     * Waters the garden plot
-     * @return true if watering was successful
-     */
     public boolean waterPlot() {
         if (!isOccupied()) {
             return false;
         }
         
         if (isWatered) {
-            return false; // Already watered
+            return false;
         }
         
         this.isWatered = true;
         return true;
     }
     
-    /**
-     * Weeds the garden plot
-     * Flower pots cannot be weeded (they don't get weeds)
-     * @return true if weeding was successful
-     */
     public boolean weedPlot() {
         if (isFlowerPot) {
-            return false; // Can't weed a flower pot
+            return false;
         }
         
         if (isWeeded) {
-            return false; // Already weeded
+            return false;
         }
         
         this.isWeeded = true;
         return true;
     }
     
-    /**
-     * Fertilizes the garden plot
-     * @return true if fertilizing was successful
-     */
     public boolean fertilizePlot() {
         if (isFertilized) {
-            return false; // Already fertilized
+            return false;
         }
         
         this.isFertilized = true;
         return true;
     }
     
-    /**
-     * Directly sets the watered state (for save/load system)
-     * @param watered The watered state to set
-     */
     public void setWatered(boolean watered) {
         this.isWatered = watered;
     }
     
-    /**
-     * Directly sets the weeded state (for save/load system)
-     * @param weeded The weeded state to set
-     */
     public void setWeeded(boolean weeded) {
         this.isWeeded = weeded;
     }
     
-    /**
-     * Directly sets the fertilized state (for save/load system)
-     * @param fertilized The fertilized state to set
-     */
     public void setFertilized(boolean fertilized) {
         this.isFertilized = fertilized;
     }
     
     /**
+     * Gets the soil quality multiplier for mutation chance
+     * @return Multiplier (0.5 for Bad, 2.0 for Magic)
+     */
+    private double getSoilMutationMultiplier() {
+        switch (soilQuality) {
+            case "Bad": return 0.5;
+            case "Average": return 1.0;
+            case "Good": return 1.3;
+            case "Great": return 1.6;
+            case "Magic": return 2.0;
+            default: return 1.0;
+        }
+    }
+    
+    /**
+     * Gets the probability of withering (instead of staying matured)
+     * Better soil = lower wither chance = longer lifecycle
+     * @return Probability 0.0-1.0
+     */
+    private double getSoilWitherProbability() {
+        switch (soilQuality) {
+            case "Bad": return 0.80;      // 80% chance to wither
+            case "Average": return 0.60;  // 60% chance
+            case "Good": return 0.40;     // 40% chance
+            case "Great": return 0.25;    // 25% chance
+            case "Magic": return 0.15;    // 15% chance (nearly double lifecycle)
+            default: return 0.60;
+        }
+    }
+    
+    /**
      * Advances the day for this garden plot, grows the plant if conditions are met
-     * Growth is now influenced by care (watering/weeding) and flower difficulty
-     * 
-     * FLOWER POT CHANGES:
-     * - Flower pots don't get weeds, so weeding is always true
-     * - Double durability penalty if not watered
-     * 
-     * @return true if the plant grew, false otherwise
+     * ENHANCED: Soil quality affects mutation/withering, escalating water penalties
      */
     public boolean advanceDay() {
         if (!isOccupied()) {
-            // Reset daily states
             this.isWatered = false;
             if (!isFlowerPot) {
-                this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing (not for flower pots)
+                this.isWeeded = Math.random() > 0.7;
             }
             return false;
         }
@@ -285,57 +256,104 @@ public class gardenPlot {
         // Increment days planted
         plantedFlower.setDaysPlanted(plantedFlower.getDaysPlanted() + 1);
         
-        // Get flower difficulty to adjust growth chances
+        // Get flower difficulty
         int difficulty = FlowerRegistry.getFlowerDifficulty(plantedFlower.getName());
         if (difficulty == -1) {
-            difficulty = 3; // Default to medium if not found
+            difficulty = 3;
         }
         
-        // Calculate base growth chance (harder flowers = lower base chance)
-        // Difficulty 1: 85% base, Difficulty 5: 45% base
-        double baseGrowthChance = 0.95 - (difficulty * 0.10);
-        
-        // Modify growth chance based on care
-        double growthChance = baseGrowthChance;
-        
+        // ENHANCED WATERING PENALTY SYSTEM
         if (isWatered) {
-            growthChance += 0.30; // +30% if watered
+            consecutiveDaysWithoutWater = 0; // Reset counter
         } else {
-            growthChance -= 0.25; // -25% if not watered
+            consecutiveDaysWithoutWater++; // Increment counter
             
-            // FLOWER POT: Double durability penalty if not watered
-            if (isFlowerPot) {
-                double currentDurability = plantedFlower.getDurability();
-                plantedFlower.setDurability(currentDurability - 1); // Extra -1 durability (auto-withers at 0)
+            // Day 7 without water: Instant wither
+            if (consecutiveDaysWithoutWater >= 7) {
+                plantedFlower.setDurability(0); // Triggers auto-wither in Flower.java
+                // Plant is now withered, reset counter
+                consecutiveDaysWithoutWater = 0;
+            } else {
+                // Escalating durability penalties for consecutive days without water
+                // Day 1-3: Standard penalty
+                // Day 4: 2x penalty
+                // Day 5: 3x penalty  
+                // Day 6: 4x penalty
+                double waterPenalty = 1.0;
+                if (consecutiveDaysWithoutWater >= 4) {
+                    waterPenalty = consecutiveDaysWithoutWater - 2; // Day 4 = 2x, Day 5 = 3x, etc.
+                }
+                
+                // Base damage for not watering
+                double baseDamage = 1.0;
+                if (isFlowerPot) {
+                    baseDamage = 2.0; // Flower pots get double base penalty
+                }
+                
+                double totalDamage = baseDamage * waterPenalty;
+                plantedFlower.setDurability(plantedFlower.getDurability() - totalDamage);
             }
         }
         
-        // Weeding only matters for regular plots
+        // ENHANCED WEEDING PENALTY SYSTEM (only for regular plots)
+        if (!isFlowerPot && !isWeeded) {
+            // Not weeding causes durability damage (less severe than not watering)
+            plantedFlower.setDurability(plantedFlower.getDurability() - 0.3);
+        }
+        
+        // Check if plant withered from neglect before trying growth
+        if (plantedFlower.getGrowthStage().equals("Withered")) {
+            this.isWatered = false;
+            if (!isFlowerPot) {
+                this.isWeeded = Math.random() > 0.7;
+            } else {
+                this.isWeeded = true;
+            }
+            if (this.isFertilized && Math.random() > 0.5) {
+                this.isFertilized = false;
+            }
+            if (this.isFertilized && Math.random() < 0.0075) {
+                upgradeSoilQuality();
+            }
+            return true; // State changed (withered)
+        }
+        
+        // Calculate growth chance
+        double baseGrowthChance = 0.95 - (difficulty * 0.10);
+        double growthChance = baseGrowthChance;
+        
+        // Water is REQUIRED for growth
+        if (isWatered) {
+            growthChance += 0.30;
+        } else {
+            growthChance = 0; // NO GROWTH without water
+        }
+        
+        // Weeding bonus (only for regular plots)
         if (!isFlowerPot) {
             if (isWeeded) {
-                growthChance += 0.15; // +15% if weeded
+                growthChance += 0.15;
             } else {
-                growthChance -= 0.10; // -10% if weedy
+                growthChance -= 0.10;
             }
         }
         
         if (isFertilized) {
-            growthChance += 0.20; // +20% if fertilized
+            growthChance += 0.20;
         }
         
-        // Clamp between 10% and 99%
-        growthChance = Math.max(0.10, Math.min(0.99, growthChance));
+        // Clamp between 0% and 99%
+        growthChance = Math.max(0.0, Math.min(0.99, growthChance));
         
         // Roll for growth
         boolean shouldGrow = Math.random() < growthChance;
         
-        // Growth logic based on current stage
+        // Growth logic
         String currentStage = plantedFlower.getGrowthStage();
         int daysPlanted = plantedFlower.getDaysPlanted();
         boolean didGrow = false;
         
         if (shouldGrow) {
-            // Progress to next stage if enough days have passed
             if (currentStage.equals("Seed") && daysPlanted >= 3) {
                 plantedFlower.setGrowthStage("Seedling");
                 didGrow = true;
@@ -346,33 +364,30 @@ public class gardenPlot {
                 plantedFlower.setGrowthStage("Matured");
                 didGrow = true;
             } else if (currentStage.equals("Matured") && daysPlanted >= 20) {
-                // Check if flower mutates or withers
-                // Higher difficulty flowers have better mutation chance
-                double mutationChance = 0.05 + (difficulty * 0.02);
+                // ENHANCED: Soil quality affects both mutation and withering
                 
+                // Get base mutation chance from CSV
+                double baseMutationChance = 0.05 + (difficulty * 0.02);
                 if (isFertilized) {
-                    mutationChance *= 2; // Double chance if fertilized
+                    baseMutationChance *= 2;
                 }
                 
-                if (Math.random() < mutationChance) {
+                // Apply soil quality multiplier
+                double soilMultiplier = getSoilMutationMultiplier();
+                double finalMutationChance = baseMutationChance * soilMultiplier;
+                
+                if (Math.random() < finalMutationChance) {
                     plantedFlower.setGrowthStage("Mutated");
+                    didGrow = true;
                 } else {
-                    plantedFlower.setGrowthStage("Withered");
-                }
-                didGrow = true;
-            }
-        } else if (!isWatered) {
-            // Plant might take damage if not cared for
-            // Harder flowers are more resilient
-            double damageChance = 0.30 - (difficulty * 0.04);
-            
-            if (Math.random() < damageChance) {
-                double currentDurability = plantedFlower.getDurability();
-                plantedFlower.setDurability(currentDurability - 1); // Auto-withers at 0 via setDurability
-                
-                // Check if plant withered to update didGrow flag
-                if (plantedFlower.getGrowthStage().equals("Withered")) {
-                    didGrow = true; // Changed state, so return true
+                    // ENHANCED: Probability-based withering instead of automatic
+                    double witherProbability = getSoilWitherProbability();
+                    
+                    if (Math.random() < witherProbability) {
+                        plantedFlower.setGrowthStage("Withered");
+                        didGrow = true;
+                    }
+                    // If doesn't wither, stays Matured for another day
                 }
             }
         }
@@ -380,28 +395,24 @@ public class gardenPlot {
         // Reset daily states
         this.isWatered = false;
         if (!isFlowerPot) {
-            this.isWeeded = Math.random() > 0.7; // 30% chance of weeds appearing (not for flower pots)
+            this.isWeeded = Math.random() > 0.7;
         } else {
-            this.isWeeded = true; // Flower pots stay weed-free
+            this.isWeeded = true;
         }
         
-        // Fertilizer has chance to fade each day
+        // Fertilizer fade
         if (this.isFertilized && Math.random() > 0.5) {
             this.isFertilized = false;
         }
         
-        // Very low chance to upgrade soil quality when fertilized
-        if (this.isFertilized && Math.random() < 0.0075) { // 0.75% chance
+        // Soil quality upgrade
+        if (this.isFertilized && Math.random() < 0.0075) {
             upgradeSoilQuality();
         }
         
         return didGrow;
     }
     
-    /**
-     * Upgrades the soil quality by one tier (permanent upgrade)
-     * Progression: Bad -> Average -> Good -> Great -> Magic
-     */
     private void upgradeSoilQuality() {
         switch (soilQuality) {
             case "Bad":
@@ -417,77 +428,42 @@ public class gardenPlot {
                 soilQuality = "Magic";
                 break;
             case "Magic":
-                // Already at max, no upgrade
                 return;
         }
-        // Soil upgraded (player will see this in garden check)
     }
     
-    /**
-     * Checks if the plot is occupied
-     * @return true if there is a plant in the plot
-     */
     public boolean isOccupied() {
         return plantedFlower != null;
     }
     
-    /**
-     * Gets the plant in this plot
-     * @return The flower in this plot, or null if empty
-     */
     public Flower getPlantedFlower() {
         return plantedFlower;
     }
     
-    /**
-     * Checks if the plot is watered
-     * @return true if watered
-     */
     public boolean isWatered() {
         return isWatered;
     }
     
-    /**
-     * Checks if the plot is weeded
-     * @return true if weeded
-     */
     public boolean isWeeded() {
         return isWeeded;
     }
     
-    /**
-     * Checks if the plot is fertilized
-     * @return true if fertilized
-     */
     public boolean isFertilized() {
         return isFertilized;
     }
     
-    /**
-     * Gets the soil quality
-     * @return The soil quality
-     */
     public String getSoilQuality() {
         return soilQuality;
     }
     
-    /**
-     * Sets the soil quality
-     * @param soilQuality The new soil quality
-     */
     public void setSoilQuality(String soilQuality) {
         this.soilQuality = soilQuality;
     }
     
-    /**
-     * Gets a description of the garden plot
-     * @return A string describing the garden plot
-     */
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         
-        // Different icon for flower pot vs regular plot
         if (isFlowerPot) {
             sb.append("🪴 Flower Pot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
         } else {
@@ -498,13 +474,15 @@ public class gardenPlot {
             sb.append("  Plant: ").append(plantedFlower.getName()).append(" (").append(plantedFlower.getGrowthStage()).append(")\n");
             sb.append("  Days Planted: ").append(plantedFlower.getDaysPlanted()).append("\n");
             sb.append("  Durability: ").append(plantedFlower.getDurability()).append("\n");
+            if (consecutiveDaysWithoutWater > 0) {
+                sb.append("  ⚠️ Days without water: ").append(consecutiveDaysWithoutWater).append("/7\n");
+            }
         } else {
             sb.append("  [Empty]\n");
         }
         
         sb.append("  Watered: ").append(isWatered ? "✅" : "❌").append("\n");
         
-        // Only show weeding status for regular plots
         if (!isFlowerPot) {
             sb.append("  Weeded: ").append(isWeeded ? "✅" : "❌").append("\n");
         }
@@ -514,10 +492,6 @@ public class gardenPlot {
         return sb.toString();
     }
     
-    /**
-     * Gets an emoji representation of soil quality
-     * @return Emoji for current soil quality
-     */
     private String getSoilQualityEmoji() {
         switch (soilQuality) {
             case "Bad": return "💀";
