@@ -1,23 +1,22 @@
 /* Journal class for handling save/load functionality
  * Added to sunflowrSimulator package
  * 
- * PRE-RELEASE UPDATES:
- * - Removed all [SAVE] and [LOAD] debug output
- * - Added consecutiveDaysWithoutWater tracking
- * - Condensed to single success/error messages
+ * UPDATES:
+ * - Added dream unlock tracking
+ * - Enforced 100 entry maximum (5 per page * 20 pages)
+ * - Entries displayed in reverse chronological order
  */
 
 import java.io.*;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.HashMap;
 
 public class Journal {
     private static final String SAVE_DIRECTORY = "saves/";
     public static final int ENTRIES_PER_PAGE = 5;
-    private static final int MAX_PAGES = 20;
+    public static final int MAX_PAGES = 20;
+    public static final int MAX_ENTRIES = ENTRIES_PER_PAGE * MAX_PAGES; // 100 entries
     
     private static class PlotData {
         boolean watered;
@@ -25,7 +24,7 @@ public class Journal {
         boolean fertilized;
         String soilQuality;
         boolean isFlowerPot;
-        int consecutiveDaysWithoutWater; // NEW
+        int consecutiveDaysWithoutWater;
         String[] flowerData;
         
         PlotData() {
@@ -89,6 +88,12 @@ public class Journal {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             writer.write("SaveDate=" + now.format(formatter) + "\n");
             
+            // NEW: Save unlocked dreams
+            writer.write("[UNLOCKED_DREAMS]\n");
+            for (String dreamFile : player.getUnlockedDreams()) {
+                writer.write("Dream=" + dreamFile + "\n");
+            }
+            
             // Write inventory items
             writer.write("[INVENTORY]\n");
             ArrayList<Object> inventory = player.getInventory();
@@ -122,7 +127,6 @@ public class Journal {
             
             for (int i = 0; i < gardenPlots.size(); i++) {
                 gardenPlot plot = gardenPlots.get(i);
-                // ENHANCED: Added consecutiveDaysWithoutWater to save format
                 writer.write("Plot=" + i + "," + 
                             plot.isWatered() + "," + 
                             plot.isWeeded() + "," + 
@@ -181,6 +185,7 @@ public class Journal {
             String section = "";
             String line;
             List<String> journalEntries = new ArrayList<>();
+            Set<String> unlockedDreams = new HashSet<>();
             
             int expectedPlotCount = 0;
             Map<Integer, PlotData> plotDataMap = new HashMap<>();
@@ -189,6 +194,9 @@ public class Journal {
                 // Section headers
                 if (line.equals("[PLAYER]")) {
                     section = "PLAYER";
+                    continue;
+                } else if (line.equals("[UNLOCKED_DREAMS]")) {
+                    section = "UNLOCKED_DREAMS";
                     continue;
                 } else if (line.equals("[INVENTORY]")) {
                     section = "INVENTORY";
@@ -219,6 +227,10 @@ public class Journal {
                         player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
                     } else if (line.startsWith("HasBuiltExtraPlot=")) {
                         player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
+                    }
+                } else if (section.equals("UNLOCKED_DREAMS")) {
+                    if (line.startsWith("Dream=")) {
+                        unlockedDreams.add(line.substring(6));
                     }
                 } else if (section.equals("INVENTORY") && player != null) {
                     if (line.startsWith("Flower=")) {
@@ -256,7 +268,6 @@ public class Journal {
                                 pd.isFlowerPot = Boolean.parseBoolean(plotData[5]);
                             }
                             
-                            // ENHANCED: Load consecutiveDaysWithoutWater
                             if (plotData.length >= 7) {
                                 pd.consecutiveDaysWithoutWater = Integer.parseInt(plotData[6]);
                             }
@@ -324,11 +335,16 @@ public class Journal {
                 }
             }
             
-            // Add journal entries
+            // Add journal entries (will be reversed when displayed)
             if (player != null && !journalEntries.isEmpty()) {
                 for (String entry : journalEntries) {
                     player.addJournalEntry(entry);
                 }
+            }
+            
+            // NEW: Restore unlocked dreams
+            if (player != null && !unlockedDreams.isEmpty()) {
+                player.setUnlockedDreams(unlockedDreams);
             }
             
             if (player != null) {
@@ -342,10 +358,19 @@ public class Journal {
         }
     }
     
+    /**
+     * Adds a journal entry with automatic pruning to maintain max 100 entries
+     */
     public static boolean addJournalEntry(Player1 player, String entry) {
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedEntry = "Day " + player.getDay() + " (" + now.format(formatter) + "): " + entry;
+        
+        // UPDATED: Enforce 100 entry limit - remove oldest if needed
+        List<String> entries = player.getJournalEntries();
+        if (entries.size() >= MAX_ENTRIES) {
+            entries.remove(0); // Remove oldest entry
+        }
         
         player.addJournalEntry(formattedEntry);
         
@@ -442,13 +467,7 @@ public class Journal {
             return new ArrayList<>();
         }
         
-        List<String> allEntries = player.getJournalEntries();
-        int maxEntries = MAX_PAGES * ENTRIES_PER_PAGE;
-        if (allEntries.size() > maxEntries) {
-            return allEntries.subList(0, maxEntries);
-        }
-        
-        return allEntries;
+        return player.getJournalEntries();
     }
     
     public static boolean saveExists(String playerName) {

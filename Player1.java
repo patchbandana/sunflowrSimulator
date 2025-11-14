@@ -3,13 +3,14 @@
  * Description: Player Save File for manipulating the player's stats and details
  * 
  * UPDATES:
- * - Added tracking for flower pots crafted and placed
- * - Added methods to manage flower pot inventory and limits
- * - Added soil quality upgrade notifications in advanceDay()
+ * - Added dream tracking system for unlockable dream journal
+ * - Modified advanceDay to use summary journal entries instead of per-plant entries
  */
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Player1 {
 
@@ -27,12 +28,15 @@ public class Player1 {
     // Garden plots list to store player's garden plots
     private List<gardenPlot> gardenPlots;
     
-    // NEW: Tracking for flower pots
-    private int flowerPotsCrafted; // Total flower pots ever crafted
-    private static final int MAX_FLOWER_POTS = 10; // Maximum flower pots that can exist
+    // Tracking for flower pots
+    private int flowerPotsCrafted;
+    private static final int MAX_FLOWER_POTS = 10;
     
-    // NEW: Track if player has built their first additional plot (for hints)
+    // Track if player has built their first additional plot (for hints)
     private boolean hasBuiltExtraPlot;
+    
+    // NEW: Track unlocked dreams (excluding hints)
+    private Set<String> unlockedDreams;
 
     public Player1(String name) {
         this.name = name;
@@ -43,6 +47,7 @@ public class Player1 {
         this.journalEntries = new ArrayList<>();
         this.flowerPotsCrafted = 0;
         this.hasBuiltExtraPlot = false;
+        this.unlockedDreams = new HashSet<>();
         
         // Initialize with 3 garden plots
         this.gardenPlots = new ArrayList<>();
@@ -92,12 +97,12 @@ public class Player1 {
         gardenPlots.add(new gardenPlot());
     }
     
-    // NEW: Add a flower pot to the garden
+    // Add a flower pot to the garden
     public void addFlowerPotToGarden(gardenPlot flowerPot) {
         gardenPlots.add(flowerPot);
     }
     
-    // NEW: Count how many flower pots are currently placed in the garden
+    // Count how many flower pots are currently placed in the garden
     public int getPlacedFlowerPotCount() {
         int count = 0;
         for (gardenPlot plot : gardenPlots) {
@@ -108,7 +113,7 @@ public class Player1 {
         return count;
     }
     
-    // NEW: Count how many flower pots are in the inventory
+    // Count how many flower pots are in the inventory
     public int getInventoryFlowerPotCount() {
         int count = 0;
         for (Object item : inventory) {
@@ -119,40 +124,61 @@ public class Player1 {
         return count;
     }
     
-    // NEW: Check if player can craft more flower pots
+    // Check if player can craft more flower pots
     public boolean canCraftFlowerPot() {
         int totalFlowerPots = getPlacedFlowerPotCount() + getInventoryFlowerPotCount();
         return totalFlowerPots < MAX_FLOWER_POTS;
     }
     
-    // NEW: Get total flower pots (placed + in inventory)
+    // Get total flower pots (placed + in inventory)
     public int getTotalFlowerPots() {
         return getPlacedFlowerPotCount() + getInventoryFlowerPotCount();
     }
     
-    // NEW: Craft a flower pot
+    // Craft a flower pot
     public void craftFlowerPot() {
         flowerPotsCrafted++;
     }
     
-    // NEW: Get total flower pots ever crafted
+    // Get total flower pots ever crafted
     public int getFlowerPotsCrafted() {
         return flowerPotsCrafted;
     }
     
-    // NEW: Set flower pots crafted (for save/load)
+    // Set flower pots crafted (for save/load)
     public void setFlowerPotsCrafted(int count) {
         this.flowerPotsCrafted = count;
     }
     
-    // NEW: Check if player has built extra plot
+    // Check if player has built extra plot
     public boolean hasBuiltExtraPlot() {
         return hasBuiltExtraPlot;
     }
     
-    // NEW: Set that player has built extra plot
+    // Set that player has built extra plot
     public void setHasBuiltExtraPlot(boolean hasBuilt) {
         this.hasBuiltExtraPlot = hasBuilt;
+    }
+    
+    // NEW: Dream tracking methods
+    public void unlockDream(String dreamFilename) {
+        unlockedDreams.add(dreamFilename);
+    }
+    
+    public boolean hasDreamUnlocked(String dreamFilename) {
+        return unlockedDreams.contains(dreamFilename);
+    }
+    
+    public Set<String> getUnlockedDreams() {
+        return new HashSet<>(unlockedDreams); // Return copy for safety
+    }
+    
+    public void setUnlockedDreams(Set<String> dreams) {
+        this.unlockedDreams = new HashSet<>(dreams);
+    }
+    
+    public int getUnlockedDreamCount() {
+        return unlockedDreams.size();
     }
     
     // Journal entries methods
@@ -218,7 +244,13 @@ public class Player1 {
         this.day++;
         this.nrg = 10; // Refresh energy each day
         
-        // Advance all garden plots - track soil quality changes
+        // UPDATED: Track growth/mutations/withering for summary
+        int totalGrew = 0;
+        int totalMutated = 0;
+        int totalWithered = 0;
+        int soilUpgrades = 0;
+        
+        // Advance all garden plots
         for (int i = 0; i < gardenPlots.size(); i++) {
             gardenPlot plot = gardenPlots.get(i);
             String previousSoil = plot.getSoilQuality();
@@ -227,39 +259,70 @@ public class Player1 {
             
             // Check if soil quality upgraded
             if (!previousSoil.equals(newSoil)) {
+                soilUpgrades++;
                 String plotType = plot.isFlowerPot() ? "flower pot" : "plot #" + (i + 1);
                 addJournalEntry("✨ The soil in your " + plotType + " improved from " + 
                               previousSoil + " to " + newSoil + "!");
             }
             
-            // Add journal entries about growth if a plant grew
+            // Count growth events by stage
             if (grew && plot.isOccupied()) {
                 Flower flower = plot.getPlantedFlower();
                 String stage = flower.getGrowthStage();
                 
-                if (stage.equals("Seedling")) {
-                    addJournalEntry("Your " + flower.getName() + " sprouted into a seedling!");
-                } else if (stage.equals("Bloomed")) {
-                    addJournalEntry("Your " + flower.getName() + " has bloomed! It's beautiful!");
-                } else if (stage.equals("Matured")) {
-                    addJournalEntry("Your " + flower.getName() + " has fully matured.");
+                if (stage.equals("Mutated")) {
+                    totalMutated++;
                 } else if (stage.equals("Withered")) {
-                    addJournalEntry("Your " + flower.getName() + " has withered. Consider harvesting it soon.");
-                } else if (stage.equals("Mutated")) {
-                    addJournalEntry("Something strange happened to your " + flower.getName() + "! It mutated!");
+                    totalWithered++;
+                } else {
+                    totalGrew++;
                 }
             }
-            
-            // Add reminders about garden care
+        }
+        
+        // UPDATED: Add summary entries instead of per-plant entries
+        if (totalGrew > 0) {
+            if (totalGrew == 1) {
+                addJournalEntry("🌱 1 plant grew overnight!");
+            } else {
+                addJournalEntry("🌱 " + totalGrew + " plants grew overnight!");
+            }
+        }
+        
+        if (totalMutated > 0) {
+            if (totalMutated == 1) {
+                addJournalEntry("✨ 1 plant mutated into something special!");
+            } else {
+                addJournalEntry("✨ " + totalMutated + " plants mutated into something special!");
+            }
+        }
+        
+        if (totalWithered > 0) {
+            if (totalWithered == 1) {
+                addJournalEntry("🥀 1 plant withered overnight.");
+            } else {
+                addJournalEntry("🥀 " + totalWithered + " plants withered overnight.");
+            }
+        }
+        
+        // Check for any plots that need watering/weeding
+        boolean needsWater = false;
+        boolean needsWeeding = false;
+        
+        for (gardenPlot plot : gardenPlots) {
             if (plot.isOccupied() && !plot.isWatered()) {
-                Flower flower = plot.getPlantedFlower();
-                addJournalEntry("Remember to water your " + flower.getName() + "!");
+                needsWater = true;
             }
-            
-            // Only add weed reminders for regular plots (not flower pots)
             if (!plot.isFlowerPot() && !plot.isWeeded()) {
-                addJournalEntry("Some weeds have appeared in your garden.");
+                needsWeeding = true;
             }
+        }
+        
+        if (needsWater) {
+            addJournalEntry("💧 Your plants need watering!");
+        }
+        if (needsWeeding) {
+            addJournalEntry("🌿 Some weeds appeared in the garden.");
         }
     }
 }
