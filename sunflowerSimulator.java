@@ -1,19 +1,11 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 11/11/2025
+ * Last Updated: 11/14/2025
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
- * * REFACTORING NOTES:
- * - Extracted water and weed garden functionality into GardenActions.java
- * - Extracted plant menu functionality into PlantingActions.java
- * - Extracted build menu functionality into BuildingActions.java
- * - Extracted shop functionality into ShopActions.java
- * - Extracted backpack display into BackpackActions.java
- * - Extracted trimming functionality into TrimmingActions.java
- * - Extracted garden check functionality into GardenCheckActions.java
- * - Extracted journal functionality into JournalActions.java
- * - Main file now focuses on core game loop and day advancement
- * - Maintained all original gameplay and flavor text
- * * FIX: Now resets shop inventory when the day advances.
+ * 
+ * UPDATES:
+ * - Added dream tracking to unlock dreams in journal
+ * - Dreams are now tracked separately from hints
  */
 
 import java.util.Scanner;
@@ -215,39 +207,78 @@ public class sunflowerSimulator {
 
 		System.out.println("\n💤 You drift off to sleep...");
 
-		// Dream or hint system
-		String dreamOrHint = null;
+		// UPDATED: Dream or hint system with tracking
+		String dreamContent = null;
+		String dreamFilename = null;
 		boolean showedHint = false;
 
 		// Check if we should show a hint (after day 30, if player hasn't built extra plot)
 		if (player.getDay() >= 30 && !player.hasBuiltExtraPlot() && HintReader.hasHints()) {
 			// 50% chance to show hint instead of dream
 			if (Math.random() < 0.5) {
-				dreamOrHint = HintReader.getSpecificHint("build_expansion.txt");
-				if (dreamOrHint == null) {
-					dreamOrHint = HintReader.getRandomHint(100); // Get any hint
+				dreamContent = HintReader.getSpecificHint("build_expansion.txt");
+				if (dreamContent == null) {
+					dreamContent = HintReader.getRandomHint(100); // Get any hint
 				}
 				showedHint = true;
 			}
 		}
 
 		// If no hint, try for a regular dream
-		if (dreamOrHint == null) {
-			dreamOrHint = DreamReader.getRandomDream(25);
+		if (dreamContent == null) {
+			// Try to get a random dream - need to track which file it came from
+			if (DreamReader.hasDreams() && Math.random() < 0.25) { // 25% chance
+				// Get list of dream files and pick one
+				java.util.List<String> allDreamFiles = new java.util.ArrayList<>();
+				try {
+					java.io.File dreamDir = new java.io.File("dream.txt/");
+					if (dreamDir.exists() && dreamDir.isDirectory()) {
+						java.io.File[] files = dreamDir.listFiles((dir, name) -> name.endsWith(".txt"));
+						if (files != null) {
+							for (java.io.File file : files) {
+								allDreamFiles.add(file.getName());
+							}
+						}
+					}
+					
+					if (!allDreamFiles.isEmpty()) {
+						// Pick a random dream
+						dreamFilename = allDreamFiles.get((int)(Math.random() * allDreamFiles.size()));
+						
+						// Read the dream content
+						try (java.io.BufferedReader reader = new java.io.BufferedReader(
+								new java.io.FileReader("dream.txt/" + dreamFilename))) {
+							StringBuilder dream = new StringBuilder();
+							String line;
+							while ((line = reader.readLine()) != null) {
+								dream.append(line).append("\n");
+							}
+							dreamContent = dream.toString().trim();
+						}
+					}
+				} catch (java.io.IOException e) {
+					// Silent fail
+				}
+			}
 		}
 
-		if (dreamOrHint != null) {
+		if (dreamContent != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("╔═══════════════════════════════════╗");
-			System.out.println(dreamOrHint);
-			System.out.println("╚═══════════════════════════════════╝");
+			System.out.println("╔════════════════════════════════════╗");
+			System.out.println(dreamContent);
+			System.out.println("╚════════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
 				Journal.addJournalEntry(player, "Had a dream about expanding the garden.");
 			} else {
 				System.out.println("\nYou wake up feeling inspired.");
-				Journal.addJournalEntry(player, "Had a vivid dream about the garden tonight.");
+				
+				// UPDATED: Track this dream as unlocked (only if not a hint)
+				if (dreamFilename != null) {
+					player.unlockDream(dreamFilename);
+					Journal.addJournalEntry(player, "Had a vivid dream tonight.");
+				}
 			}
 		} else {
 			System.out.println("\nYou slept soundly through the night. It's a new day! :D");
