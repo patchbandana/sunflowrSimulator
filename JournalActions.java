@@ -1,337 +1,311 @@
 /* JournalActions.java
  * Handles all journal-related actions
  * Created to modularize sunflowerSimulator.java
- * 
- * UPDATES:
- * - Added dream journal submenu
- * - Entries now displayed in reverse chronological order (newest first)
- * - Save game / Exit options
- * - Reset game (New Game+)
+ * * FINAL FIXES:
+ * - TotalPages is calculated robustly using Journal.getTotalJournalPages() to prevent the 21-page bug.
+ * - Save/Load success messages are consolidated here to prevent double printing.
+ * - handleViewDreamJournal reverted to display raw dream filenames and full dream content as requested.
  */
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Map;
 
 public class JournalActions {
-    
-    /**
-     * Handles the complete journal menu workflow
-     * @param player The current player
-     * @param scanner Scanner for user input
-     * @return Updated player reference (may be new player if reset)
-     */
-    public static Player1 handleJournal(Player1 player, Scanner scanner) {
-        boolean inJournal = true;
-        int currentPage = 0;
-        int totalPages = Math.max(1, (int)Math.ceil((double)player.getJournalEntries().size() / Journal.ENTRIES_PER_PAGE));
 
-        while (inJournal) {
-            System.out.println("\n📖 Journal Menu 📖");
-            System.out.println("1. View Journal Entries");
-            System.out.println("2. Add New Entry");
-            System.out.println("3. View Dream Journal");
-            System.out.println("4. Save Game / Exit");
-            System.out.println("5. Return to Main Menu");
-            System.out.println("6. Reset Game (New Game+)");
+	/**
+	 * Handles the complete journal menu workflow
+	 * @param player The current player
+	 * @param scanner Scanner for user input
+	 * @return Updated player reference (may be new player if reset)
+	 */
+	public static Player1 handleJournal(Player1 player, Scanner scanner) {
+		boolean inJournal = true;
+		int currentPage = 0;
+		
+		// CRITICAL FIX: Force the totalPages calculation to rely on 
+		// the robust Journal.getTotalJournalPages(), which calls loadGame() and prunes the list.
+		int totalPages = Journal.getTotalJournalPages(player.getName());
+		
+		while (inJournal) {
+			// Update totalPages at the start of the loop for safety
+			totalPages = Journal.getTotalJournalPages(player.getName()); 
 
-            System.out.print("\nEnter your choice: ");
-            String journalChoice = scanner.next();
-            scanner.nextLine();
+			System.out.println("\n📖 Journal Menu 📖");
+			System.out.println("1. View Journal Entries");
+			System.out.println("2. Add New Entry");
+			System.out.println("3. View Dream Journal");
+			System.out.println("4. Save Game / Exit");
+			System.out.println("5. Return to Main Menu");
+			System.out.println("6. Reset Game (New Game+)");
+			System.out.print("\nEnter choice: ");
 
-            switch (journalChoice) {
-            case "1":
-                // View journal entries with pagination
-                viewJournalEntries(player, scanner, currentPage, totalPages);
-                break;
+			if (scanner.hasNextInt()) {
+				int choice = scanner.nextInt();
+				scanner.nextLine(); 
 
-            case "2":
-                // Add new journal entry
-                addJournalEntry(player, scanner);
-                totalPages = Math.max(1, (int)Math.ceil((double)player.getJournalEntries().size() / Journal.ENTRIES_PER_PAGE));
-                break;
+				switch (choice) {
+					case 1:
+						handleViewJournal(player, scanner, currentPage, totalPages);
+						break;
+					case 2:
+						handleAddNewEntry(player, scanner);
+						// Reset page counter and update total pages after adding new entry
+						currentPage = 0;
+						totalPages = Journal.getTotalJournalPages(player.getName()); 
+						break;
+					case 3:
+						handleViewDreamJournal(player, scanner); 
+						break;
+					case 4:
+						handleSaveGame(player); 
+						inJournal = false;
+						System.exit(0);
+						break;
+					case 5:
+						handleSaveGame(player); 
+						inJournal = false;
+						break;
+					case 6:
+						Player1 newPlayer = handleResetGame(player, scanner);
+						if (newPlayer != null) {
+							player = newPlayer; 
+							currentPage = 0;
+							totalPages = Journal.getTotalJournalPages(player.getName());
+						}
+						break;
+					default:
+						System.out.println("Invalid choice. Please enter a number between 1 and 6.");
+						break;
+				}
+			} else {
+				System.out.println("Invalid input. Please enter a number.");
+				scanner.nextLine(); 
+			}
+		}
+		return player;
+	}
 
-            case "3":
-                // NEW: View dream journal
-                viewDreamJournal(player, scanner);
-                break;
+	/**
+	 * Handles viewing and navigating journal entries
+	 */
+	private static void handleViewJournal(Player1 player, Scanner scanner, int currentPage, int totalPages) {
+		boolean viewing = true;
 
-            case "4":
-                // Save/Exit options
-                boolean shouldExit = handleSaveAndExit(player, scanner);
-                if (shouldExit) {
-                    System.exit(0);
-                }
-                break;
+		// Re-fetch total pages before entering viewing loop for robustness
+		totalPages = Journal.getTotalJournalPages(player.getName());
+		if (totalPages == 0) {
+			System.out.println("\nYour journal is empty.");
+			return;
+		}
 
-            case "5":
-                // Return to main menu
-                inJournal = false;
-                break;
+		// Adjust currentPage if it's now out of bounds (e.g., if entries were pruned)
+		if (currentPage >= totalPages) {
+			currentPage = Math.max(0, totalPages - 1);
+		}
+		
+		while (viewing) {
+			// Get entries for the current page
+			List<String> entries = Journal.getJournalEntries(player.getName(), currentPage);
+			
+			// Reverse the 5 entries so the newest one is listed first on the page.
+			Collections.reverse(entries); 
 
-            case "6":
-                // Reset game
-                Player1 resetPlayer = handleResetGame(player, scanner);
-                if (resetPlayer != null) {
-                    player = resetPlayer;
-                    inJournal = false;
-                }
-                break;
+			System.out.println("\n=== Journal Entries (Page " + (currentPage + 1) + " of " + totalPages + ") ===");
+			System.out.println("(Showing newest entries first)");
 
-            default:
-                System.out.println("Invalid choice. Please try again.");
-            }
-        }
-        
-        return player;
-    }
-    
-    /**
-     * Displays journal entries in REVERSE chronological order (newest first)
-     * @param player The player
-     * @param scanner Scanner for user input
-     * @param currentPage Starting page number (0-based)
-     * @param totalPages Total number of pages
-     */
-    private static void viewJournalEntries(Player1 player, Scanner scanner, int currentPage, int totalPages) {
-        boolean viewingEntries = true;
+			for (String entry : entries) {
+				System.out.println(entry);
+			}
 
-        List<String> allEntries = player.getJournalEntries();
-        
-        // UPDATED: Reverse the list to show newest first
-        List<String> reversedEntries = new ArrayList<>(allEntries);
-        Collections.reverse(reversedEntries);
-        
-        totalPages = Math.max(1, (int)Math.ceil((double)reversedEntries.size() / Journal.ENTRIES_PER_PAGE));
+			// Navigation
+			System.out.println("\nNavigation:");
+			if (currentPage > 0) {
+				System.out.print("P: Previous Page | ");
+			}
+			if (currentPage < totalPages - 1) {
+				System.out.print("N: Next Page | ");
+			}
+			System.out.println("B: Back to Journal Menu");
+			System.out.print("Enter command: ");
 
-        while (viewingEntries) {
-            System.out.println("\n=== Journal Entries (Page " + (currentPage + 1) + " of " + totalPages + ") ===");
-            System.out.println("(Showing newest entries first)");
+			String command = scanner.nextLine().trim().toUpperCase();
 
-            int startIndex = currentPage * Journal.ENTRIES_PER_PAGE;
-            int endIndex = Math.min(startIndex + Journal.ENTRIES_PER_PAGE, reversedEntries.size());
+			switch (command) {
+				case "P":
+					if (currentPage > 0) {
+						currentPage--;
+					}
+					break;
+				case "N":
+					if (currentPage < totalPages - 1) {
+						currentPage++;
+					}
+					break;
+				case "B":
+					viewing = false;
+					break;
+				default:
+					System.out.println("Invalid command.");
+					break;
+			}
+			// Update totalPages in case another action changed the list size (for robustness)
+			totalPages = Journal.getTotalJournalPages(player.getName());
+		}
+	}
 
-            if (reversedEntries.isEmpty()) {
-                System.out.println("No journal entries yet. Add some with option 2!");
-                viewingEntries = false;
-                System.out.println("\nPress Enter to continue...");
-                scanner.nextLine();
-                break;
-            } else if (startIndex >= reversedEntries.size()) {
-                System.out.println("No entries on this page.");
-                currentPage = 0;
-                continue;
-            } else {
-                for (int i = startIndex; i < endIndex; i++) {
-                    System.out.println(reversedEntries.get(i));
-                }
-            }
+	/**
+	 * Handles adding a new journal entry
+	 */
+	private static void handleAddNewEntry(Player1 player, Scanner scanner) {
+		System.out.println("\n✍️ Add New Journal Entry ✍️");
+		System.out.print("Enter your entry: ");
+		String newEntry = scanner.nextLine().trim();
 
-            System.out.println("\nNavigation:");
-            if (currentPage > 0) {
-                System.out.println("P: Previous Page");
-            }
-            if (currentPage < totalPages - 1 && endIndex < reversedEntries.size()) {
-                System.out.println("N: Next Page");
-            }
-            System.out.println("B: Back to Journal Menu");
+		if (newEntry.isEmpty()) {
+			System.out.println("Entry cannot be empty. No entry added.");
+			return;
+		}
 
-            System.out.print("\nEnter your choice: ");
-            String pageChoice = scanner.next().toUpperCase();
-            scanner.nextLine();
+		// Journal.addJournalEntry is now silent and saves the game internally
+		boolean success = Journal.addJournalEntry(player, newEntry);
 
-            switch (pageChoice) {
-            case "P":
-                if (currentPage > 0) {
-                    currentPage--;
-                }
-                break;
-            case "N":
-                if (currentPage < totalPages - 1 && endIndex < reversedEntries.size()) {
-                    currentPage++;
-                }
-                break;
-            case "B":
-                viewingEntries = false;
-                break;
-            default:
-                System.out.println("Invalid choice. Please try again.");
-            }
-        }
-    }
-    
-    /**
-     * NEW: Displays the dream journal showing unlocked dreams
-     * @param player The player
-     * @param scanner Scanner for user input
-     */
-    private static void viewDreamJournal(Player1 player, Scanner scanner) {
-        System.out.println("\n✨ Dream Journal ✨");
-        
-        // Get total dream count from DreamReader
-        int totalDreams = DreamReader.getDreamCount();
-        int unlockedCount = player.getUnlockedDreamCount();
-        
-        System.out.println("Dreams Unlocked: " + unlockedCount + "/" + totalDreams);
-        System.out.println();
-        
-        if (unlockedCount == 0) {
-            System.out.println("You haven't experienced any dreams yet.");
-            System.out.println("Dreams occur randomly when you go to sleep.");
-            System.out.println("\nPress Enter to return to journal menu...");
-            scanner.nextLine();
-            return;
-        }
-        
-        // Convert unlocked dreams to a sorted list for display
-        List<String> dreamList = new ArrayList<>(player.getUnlockedDreams());
-        Collections.sort(dreamList);
-        
-        // Display each unlocked dream with a number
-        for (int i = 0; i < dreamList.size(); i++) {
-            System.out.println("Dream " + (i + 1) + ": " + dreamList.get(i).replace(".txt", ""));
-        }
-        
-        System.out.println("\nWould you like to read a specific dream? (1-" + dreamList.size() + ", or 0 to return)");
-        System.out.print("Choice: ");
-        
-        int choice;
-        try {
-            choice = Integer.parseInt(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid input.");
-            return;
-        }
-        
-        if (choice == 0) {
-            return;
-        }
-        
-        if (choice < 1 || choice > dreamList.size()) {
-            System.out.println("Invalid dream number.");
-            return;
-        }
-        
-        // Read and display the selected dream
-        String dreamFile = dreamList.get(choice - 1);
-        System.out.println("\n╔════════════════════════════════════╗");
-        
-        // Use DreamReader to get the dream content (it's cached)
-        try {
-            java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.FileReader("dream.txt/" + dreamFile));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
-            reader.close();
-        } catch (java.io.IOException e) {
-            System.out.println("Error reading dream file.");
-        }
-        
-        System.out.println("╚════════════════════════════════════╝");
-        System.out.println("\nPress Enter to continue...");
-        scanner.nextLine();
-    }
-    
-    /**
-     * Adds a new journal entry
-     * @param player The player
-     * @param scanner Scanner for user input
-     */
-    private static void addJournalEntry(Player1 player, Scanner scanner) {
-        System.out.println("\nWrite a new journal entry:");
-        String newEntry = scanner.nextLine();
-        if (Journal.addJournalEntry(player, newEntry)) {
-            System.out.println("Journal entry added successfully!");
-            
-            // Check if we hit the limit and notify user
-            if (player.getJournalEntries().size() >= Journal.MAX_ENTRIES) {
-                System.out.println("(Note: Journal is at maximum capacity. Oldest entries are being archived.)");
-            }
-            
-            Journal.saveGame(player);
-        } else {
-            System.out.println("Failed to add journal entry.");
-        }
-    }
-    
-    /**
-     * Handles save and exit options
-     * @param player The player
-     * @param scanner Scanner for user input
-     * @return true if game should exit, false otherwise
-     */
-    private static boolean handleSaveAndExit(Player1 player, Scanner scanner) {
-        System.out.println("\nSave / Exit Options:");
-        System.out.println("1. Save Game and Continue");
-        System.out.println("2. Save Game and Exit");
-        System.out.print("\nEnter your choice: ");
-        String saveChoice = scanner.next();
-        scanner.nextLine();
+		// Only print success message once here
+		if (success) {
+			System.out.println("✅ New entry added and game saved successfully.");
+		} else {
+			System.out.println("❌ Failed to add entry or save game.");
+		}
+	}
 
-        switch (saveChoice) {
-        case "1":
-            if (Journal.saveGame(player)) {
-                System.out.println("Game saved successfully!");
-            } else {
-                System.out.println("Failed to save game.");
-            }
-            return false;
-            
-        case "2":
-            System.out.println("Saving game and exiting...");
-            Journal.addJournalEntry(player, "Ended gardening session on day " + player.getDay() + ".");
-            if (Journal.saveGame(player)) {
-                System.out.println("Game saved successfully. Thanks for playing!");
-            } else {
-                System.out.println("Warning: There was an issue saving the game.");
-                System.out.println("Exiting anyway. Thanks for playing!");
-            }
-            return true;
-            
-        default:
-            System.out.println("Invalid choice. Returning to Journal Menu.");
-            return false;
-        }
-    }
-    
-    /**
-     * Handles game reset (New Game+)
-     * @param player The current player
-     * @param scanner Scanner for user input
-     * @return New player if reset confirmed, null if cancelled
-     */
-    private static Player1 handleResetGame(Player1 player, Scanner scanner) {
-        System.out.println("\n⚠️ WARNING: This will reset your game while keeping your name! ⚠️");
-        System.out.println("All progress, inventory items, and stats will be reset to default values.");
-        System.out.println("This cannot be undone. Your previous save will be overwritten.");
-        System.out.print("\nAre you sure you want to reset? (yes/no): ");
-        String confirmReset = scanner.next().toLowerCase();
-        scanner.nextLine();
+	/**
+	 * Handles viewing and selecting a dream from the dream journal
+	 */
+	private static void handleViewDreamJournal(Player1 player, Scanner scanner) {
+		System.out.println("\n😴 Dream Journal 😴");
+		
+		if (player.getUnlockedDreams().isEmpty()) {
+			System.out.println("Your dream journal is empty. Keep sleeping to unlock new dreams!");
+			return;
+		}
+		
+		// Map dream file names to themselves for display
+		Map<String, String> dreamMap = DreamReader.getUnlockedDreamsWithTitles(player.getUnlockedDreams());
+		List<String> dreamFiles = new ArrayList<>(dreamMap.keySet());
+		
+		if (dreamFiles.isEmpty()) {
+			System.out.println("Could not load any dream files.");
+			return;
+		}
+		
+		boolean inDreamMenu = true;
+		while(inDreamMenu) {
+			System.out.println("\n--- Unlocked Dreams ---");
+			for (int i = 0; i < dreamFiles.size(); i++) {
+				String fileName = dreamFiles.get(i);
+				// Display the dream number and the raw filename
+				System.out.println((i + 1) + ". " + fileName); 
+			}
+			System.out.println("0. Back to Journal Menu");
+			System.out.print("\nEnter the number of the dream to view: ");
+			
+			if (scanner.hasNextInt()) {
+				int choice = scanner.nextInt();
+				scanner.nextLine(); 
+				
+				if (choice == 0) {
+					inDreamMenu = false;
+				} else if (choice > 0 && choice <= dreamFiles.size()) {
+					String selectedFile = dreamFiles.get(choice - 1);
+					// Display the content of the selected dream
+					displayDreamContent(selectedFile); 
+				} else {
+					System.out.println("Invalid choice. Please enter a number from the list.");
+				}
+			} else {
+				System.out.println("Invalid input. Please enter a number.");
+				scanner.nextLine(); 
+			}
+		}
+	}
+	
+	/**
+	 * Displays the full content of the selected dream file, using the filename as the header.
+	 */
+	private static void displayDreamContent(String dreamFile) {
+		String dreamText = DreamReader.readDreamFile(dreamFile);
+		
+		System.out.println("\n======================================");
+		// Display the raw filename in the header
+		System.out.println("⭐ DREAM: " + dreamFile); 
+		System.out.println("======================================");
+		
+		if (dreamText != null) {
+			// Print the ENTIRE content as returned by DreamReader (no skipping or parsing)
+			System.out.println(dreamText); 
+		} else {
+			System.out.println("[Error: Could not read dream content for " + dreamFile + "]");
+		}
+		System.out.println("======================================");
+		System.out.println("\nPress ENTER to continue...");
+		
+		// Wait for user to press enter before returning to menu
+		try {
+			System.in.read(); 
+		} catch(Exception e) {
+			// Do nothing
+		}
+	}
 
-        if (confirmReset.equals("yes")) {
-            String nameToKeep = player.getName();
-            Player1 newPlayer = new Player1(nameToKeep);
+	/**
+	 * Handles saving the game
+	 * Prints success message here, after the Journal.saveGame() call finishes silently.
+	 */
+	private static void handleSaveGame(Player1 player) {
+		System.out.println("\n💾 Saving Game...");
+		boolean success = Journal.saveGame(player);
+		if (success) {
+			System.out.println("✅ Adventure saved successfully!");
+		} else {
+			System.out.println("❌ Error saving game.");
+		}
+	}
 
-            FlowerInstance starterSeed = new FlowerInstance(
-                    "Mammoth Sunflower", "Seed", 0, 10, 1, 5);
-            newPlayer.addToInventory(starterSeed);
+	/**
+	 * Handles the game reset (New Game+) functionality
+	 * @return new player if reset confirmed, null if cancelled
+	 */
+	private static Player1 handleResetGame(Player1 player, Scanner scanner) {
+		System.out.println("\n⚠️ WARNING: This will reset your game while keeping your name! ⚠️");
+		System.out.println("All progress, inventory items, and stats will be reset to default values.");
+		System.out.println("This cannot be undone. Your previous save will be overwritten.");
+		System.out.print("\nAre you sure you want to reset? (yes/no): ");
+		String confirmReset = scanner.next().toLowerCase();
+		scanner.nextLine();
 
-            Journal.resetGame(newPlayer);
-            Journal.addJournalEntry(newPlayer, "Started a new adventure! (New Game+)");
+		if (confirmReset.equals("yes")) {
+			String nameToKeep = player.getName();
+			Player1 newPlayer = new Player1(nameToKeep);
 
-            System.out.println("\n🔄 Game has been reset successfully!");
-            System.out.println("Welcome to your new adventure, " + nameToKeep + "!");
-            System.out.println("It is day " + newPlayer.getDay() + ".");
-            System.out.println("You have " + newPlayer.getNRG() + " NRG and " + newPlayer.getCredits() + " credits.");
-            System.out.println("A new Mammoth Sunflower seed has been added to your inventory.");
+			// Give the player a starting item for the new game
+			FlowerInstance starterSeed = new FlowerInstance(
+					"Mammoth Sunflower", "Seed", 0, 10, 1, 5);
+			newPlayer.addToInventory(starterSeed);
 
-            return newPlayer;
-        } else {
-            System.out.println("Reset cancelled. Your game remains unchanged.");
-            return null;
-        }
-    }
+			Journal.resetGame(newPlayer); // This calls saveGame silently
+			Journal.addJournalEntry(newPlayer, "Started a new adventure! (New Game+)"); // This calls saveGame silently
+
+			System.out.println("\n🔄 Game has been reset successfully!");
+			System.out.println("Welcome to your new adventure, " + nameToKeep + "!");
+			System.out.println("It is day " + newPlayer.getDay() + ".");
+			System.out.println("You have " + newPlayer.getNRG() + " NRG and " + newPlayer.getCredits() + " credits.");
+			System.out.println("You have 1 " + starterSeed.getName() + " Seed in your inventory.");
+			return newPlayer;
+		} else {
+			System.out.println("\nOperation cancelled. Returning to Journal Menu.");
+			return null;
+		}
+	}
 }
