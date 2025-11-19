@@ -1,6 +1,7 @@
 /* DreamReader.java
  * Loads and randomly selects dream text files
  * Dreams are displayed when the player goes to sleep
+ * * FINAL FIX: Simplifies dream display to use filenames as titles and returns full content.
  */
 
 import java.io.*;
@@ -24,15 +25,13 @@ public class DreamReader {
         File dreamDir = new File(DREAM_DIRECTORY);
         
         if (!dreamDir.exists() || !dreamDir.isDirectory()) {
-            System.err.println("[DEBUG] Dream directory not found at: " + DREAM_DIRECTORY);
-            isLoaded = true; // Mark as loaded even if empty to avoid repeated attempts
+            isLoaded = true;
             return;
         }
         
         File[] files = dreamDir.listFiles((dir, name) -> name.endsWith(".txt"));
         
         if (files == null || files.length == 0) {
-            System.err.println("[DEBUG] No dream files found in " + DREAM_DIRECTORY);
             isLoaded = true;
             return;
         }
@@ -41,7 +40,6 @@ public class DreamReader {
             dreamFiles.add(file.getName());
         }
         
-        System.out.println("[DEBUG] Loaded " + dreamFiles.size() + " dream files.");
         isLoaded = true;
     }
     
@@ -50,7 +48,7 @@ public class DreamReader {
      * @param filename The name of the dream file
      * @return The dream text, or null if file not found
      */
-    private static String readDreamFile(String filename) {
+    public static String readDreamFile(String filename) {
         // Check cache first
         if (dreamCache.containsKey(filename)) {
             return dreamCache.get(filename);
@@ -61,8 +59,9 @@ public class DreamReader {
             StringBuilder dream = new StringBuilder();
             String line;
             
+            // Read all lines and append them, preserving original formatting
             while ((line = reader.readLine()) != null) {
-                dream.append(line).append("\n");
+                dream.append(line).append("\n"); 
             }
             
             String dreamText = dream.toString().trim();
@@ -70,11 +69,30 @@ public class DreamReader {
             return dreamText;
             
         } catch (IOException e) {
-            System.err.println("[DEBUG] Error reading dream file: " + filename);
             return null;
         }
     }
-    
+
+    /**
+     * Gets a map of unlocked dream filenames, using the filename itself as the display name.
+     * This restores the behavior requested by the user.
+     * @param unlockedDreams Set of dream file names the player has unlocked.
+     * @return A Map<String, String> where key is filename and value is the filename (for display).
+     */
+    public static Map<String, String> getUnlockedDreamsWithTitles(Set<String> unlockedDreams) {
+        Map<String, String> dreamFilenames = new LinkedHashMap<>();
+        
+        // Ensure the dreams are displayed in a consistent, sorted order
+        List<String> sortedDreams = new ArrayList<>(unlockedDreams);
+        Collections.sort(sortedDreams); 
+
+        for (String filename : sortedDreams) {
+            // Map the filename to itself for display
+            dreamFilenames.put(filename, filename); 
+        }
+        return dreamFilenames;
+    }
+
     /**
      * Gets a random dream text
      * @param chanceOfDream Percentage chance (0-100) that a dream occurs

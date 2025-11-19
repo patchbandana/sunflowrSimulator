@@ -1,11 +1,8 @@
 /* Creator: Pat Eizenga
  * Created: 6/18/2024
- * Last Updated: 11/14/2025
+ * Last Updated: 11/19/2025
  * Project: Open source, open dialog, gardening game developed with love, focus and dreams.
  * 
- * UPDATES:
- * - Added dream tracking to unlock dreams in journal
- * - Dreams are now tracked separately from hints
  */
 
 import java.util.Scanner;
@@ -92,7 +89,7 @@ public class sunflowerSimulator {
 			System.out.print("\nEnter your choice: ");
 			String actionMenuChoice = scanner.next();
 			scanner.nextLine(); // Clear the buffer
-			
+
 			// Process menu choice
 			switch(actionMenuChoice.toUpperCase()) {
 
@@ -240,11 +237,11 @@ public class sunflowerSimulator {
 							}
 						}
 					}
-					
+
 					if (!allDreamFiles.isEmpty()) {
 						// Pick a random dream
 						dreamFilename = allDreamFiles.get((int)(Math.random() * allDreamFiles.size()));
-						
+
 						// Read the dream content
 						try (java.io.BufferedReader reader = new java.io.BufferedReader(
 								new java.io.FileReader("dream.txt/" + dreamFilename))) {
@@ -273,7 +270,7 @@ public class sunflowerSimulator {
 				Journal.addJournalEntry(player, "Had a dream about expanding the garden.");
 			} else {
 				System.out.println("\nYou wake up feeling inspired.");
-				
+
 				// UPDATED: Track this dream as unlocked (only if not a hint)
 				if (dreamFilename != null) {
 					player.unlockDream(dreamFilename);
@@ -287,9 +284,9 @@ public class sunflowerSimulator {
 
 		// Advance to next day
 		player.advanceDay();
-        // Reset the shop inventory for the new day
+		// Reset the shop inventory for the new day
 		ShopActions.resetShopInventory(); 
-        
+
 		System.out.println("\n🌅 Day " + player.getDay() + " begins.");
 		System.out.println("You feel refreshed! (NRG restored to " + player.getNRG() + ")");
 
@@ -297,40 +294,97 @@ public class sunflowerSimulator {
 		displayGardenSummary(player);
 	}
 
+	// sunflowerSimulator.java
+
+	// ... replace the entire displayGardenSummary(Player1 player) method with this:
+
 	/**
-	 * Displays a summary of overnight garden changes
+	 * Displays a summary of overnight garden changes by reading the journal entries 
+	 * that were just added by Player1.advanceDay() (which uses the correct stage change logic).
+	 * This implementation is robust against journal entry character corruption by stripping 
+	 * the leading character and prepending a known-working console character.
 	 */
 	private static void displayGardenSummary(Player1 player) {
-		int growthCount = 0;
-		int witheredCount = 0;
-		int mutationCount = 0;
+		// Keywords that identify the correct summary messages added by Player1.advanceDay()
+		final String[] SUMMARY_KEYWORDS = {
+				"grew overnight!", 
+				"mutated into something special!", 
+				"withered overnight."
+		};
 
-		for (gardenPlot plot : player.getGardenPlots()) {
-			if (plot.isOccupied()) {
-				Flower flower = plot.getPlantedFlower();
-				String stage = flower.getGrowthStage();
+		// Map of journal content to console-safe emoji/character
+		// These characters are used for the console output to avoid '?'
+		final java.util.Map<String, String> CONSOLE_EMOJI_MAP = new java.util.HashMap<>();
+		CONSOLE_EMOJI_MAP.put("grew overnight!", "✓"); // Console checkmark
+		CONSOLE_EMOJI_MAP.put("mutated into something special!", "✨"); // Mutated emoji is assumed to be compatible
+		CONSOLE_EMOJI_MAP.put("withered overnight.", "⚠"); // Console warning
 
-				if (stage.equals("Seedling") || stage.equals("Bloomed") || stage.equals("Matured")) {
-					growthCount++;
-				} else if (stage.equals("Withered")) {
-					witheredCount++;
-				} else if (stage.equals("Mutated")) {
-					mutationCount++;
+		// Collect the relevant summary messages
+		java.util.List<String> summaryMessages = new java.util.ArrayList<>();
+		java.util.List<String> allEntries = player.getJournalEntries();
+
+		int totalEntries = allEntries.size();
+		int checkStart = Math.max(0, totalEntries - 10); 
+
+		for (int i = totalEntries - 1; i >= checkStart; i--) {
+			String entry = allEntries.get(i);
+
+			String matchingKeyword = null;
+			for (String keyword : SUMMARY_KEYWORDS) {
+				if (entry.contains(keyword)) {
+					matchingKeyword = keyword;
+					break;
+				}
+			}
+
+			if (matchingKeyword != null) {
+				// Extract the message content from the journal entry (e.g., "? 3 plants grew overnight!")
+				int contentStart = entry.lastIndexOf(':') + 2;
+				if (contentStart < entry.length()) {
+					String message = entry.substring(contentStart).trim();
+
+					// 1. Find the start of the numeric count to skip the leading corrupted character(s).
+					int firstDigitIndex = -1;
+					for (int k = 0; k < message.length(); k++) {
+						if (Character.isDigit(message.charAt(k))) {
+							firstDigitIndex = k;
+							break;
+						}
+					}
+
+					// 2. Remove leading corrupted characters/emoji and get the console-safe emoji
+					String consoleEmoji = CONSOLE_EMOJI_MAP.get(matchingKeyword);
+					String bodyMessage = "";
+
+					if (firstDigitIndex != -1) {
+						bodyMessage = message.substring(firstDigitIndex);
+					} else {
+						// Fallback in case no digit is found, use the entire message body
+						bodyMessage = message;
+					}
+
+					// Final formatted message: e.g., "✓ 3 plants grew overnight!"
+					message = consoleEmoji + " " + bodyMessage;
+
+					summaryMessages.add(message);
+				}
+			} else {
+				// Optimization: Stop searching once we hit an entry from before the "go to bed" action.
+				if (entry.contains("Slept soundly") || entry.contains("vivid dream")) {
+					break;
 				}
 			}
 		}
 
 		// Summary of overnight changes
-		if (growthCount > 0 || witheredCount > 0 || mutationCount > 0) {
+		if (!summaryMessages.isEmpty()) {
+			// FIX: The title emoji '🌱' is working, so we restore it.
 			System.out.println("\n🌱 Garden Update:");
-			if (growthCount > 0) {
-				System.out.println("  ✓ " + growthCount + " plant(s) grew overnight!");
-			}
-			if (mutationCount > 0) {
-				System.out.println("  ✨ " + mutationCount + " plant(s) mutated into something special!");
-			}
-			if (witheredCount > 0) {
-				System.out.println("  ⚠ " + witheredCount + " plant(s) withered. Consider harvesting them.");
+
+			// Print the messages in the correct order (Grew, Mutated, Withered)
+			// Iterate backwards over the collected list to print in the journal creation order
+			for (int i = summaryMessages.size() - 1; i >= 0; i--) {
+				System.out.println("  " + summaryMessages.get(i));
 			}
 		}
 	}
