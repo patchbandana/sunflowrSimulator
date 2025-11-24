@@ -1,3 +1,8 @@
+/* ShopActions.java
+ * Handles shop, selling, and auction house interactions
+ * Updated: November 24, 2025 - SIMPLIFIED seed buying (removed cart system)
+ */
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -7,31 +12,11 @@ public class ShopActions {
 
 	private static final Random random = new Random();
     
-    // Static inventory list that persists across shop visits
     private static List<String> currentSeedSelection = new ArrayList<>();
-    
-    // Flag to track if the inventory needs to be regenerated (should be reset daily)
     private static boolean isInventoryStale = true;
 
-    /**
-     * Internal class to manage purchase data temporarily in the cart
-     */
-    private static class PurchaseItem {
-        String name;
-        int quantity;
-        double totalCost;
-
-        PurchaseItem(String name, int quantity, double totalCost) {
-            this.name = name;
-            this.quantity = quantity;
-            this.totalCost = totalCost;
-        }
-    }
-
 	/**
-	 * Main shop interface - handles both buying and selling
-	 * @param player The player
-	 * @param scanner Scanner for user input
+	 * Main shop interface
 	 */
 	public static void handleShop(Player1 player, Scanner scanner) {
 		boolean inShop = true;
@@ -43,7 +28,7 @@ public class ShopActions {
 			System.out.println("What would you like to do?");
 			System.out.println("1: Buy Seeds");
 			System.out.println("2: Sell Items");
-			System.out.println("3: Auction Bouquets");
+			System.out.println("3: Auction House");
 			System.out.println("4: Return to Main Menu");
 
 			System.out.print("\nChoice: ");
@@ -59,7 +44,7 @@ public class ShopActions {
 				break;
 
 			case "3":
-				handleBouquetAuction(player, scanner);
+				AuctionActions.handleAuctionHouse(player, scanner);
 				break;
 
 			case "4":
@@ -73,32 +58,28 @@ public class ShopActions {
 	}
     
     /**
-     * External method that must be called from sunflowerSimulator.advanceDay()
-     * to reset the shop's inventory for the new day.
+     * Resets the shop's inventory for the new day
      */
     public static void resetShopInventory() {
         isInventoryStale = true;
     }
     
     /**
-     * Generates a new random inventory list if needed.
+     * Generates a new random inventory list if needed
      */
     private static void ensureShopInventoryIsGenerated(Player1 player) {
         if (!isInventoryStale && !currentSeedSelection.isEmpty()) {
-            return; // Inventory is fresh, no need to regenerate
+            return;
         }
         
-        // Target size is 4 or 5 options
-        int numSeeds = 4 + random.nextInt(2); 
-
-        // Always use max difficulty 5 so all seeds can be pulled,
-        // letting the weighting inside FlowerRegistry favor lower difficulties.
+        int numSeeds = 4 + random.nextInt(2);
         currentSeedSelection = FlowerRegistry.getRandomShopSelection(numSeeds, 5);
         isInventoryStale = false;
     }
 
     /**
-     * Handles the dynamic, cart-based seed purchase menu.
+     * Handles seed purchasing - simplified one-at-a-time system
+     * UPDATED: Removed cart system, purchases happen immediately like selling
      */
 	private static void handleBuySeeds(Player1 player, Scanner scanner) {
 		boolean buyingSeeds = true;
@@ -109,23 +90,19 @@ public class ShopActions {
             System.out.println("The shop is currently out of stock! Come back later.");
             return;
         }
-        
-		// Temporary list to hold the items the user selects for purchase
-		List<PurchaseItem> cart = new ArrayList<>();
 		
 		while (buyingSeeds) {
 			System.out.println("\n--- SEED SHOP ---");
 			System.out.println("Credits: " + (int)player.getCredits());
-            
-            // Calculate total cart cost
-            double currentTotalCost = cart.stream().mapToDouble(item -> item.totalCost).sum();
+			System.out.println();
 			
-			// 1. Display the current selection (simplified menu)
+			// Display available seeds
 			for (int i = 0; i < currentSeedSelection.size(); i++) {
 				String flowerName = currentSeedSelection.get(i);
 				double cost = FlowerRegistry.getSeedCost(flowerName);
                 int difficulty = FlowerRegistry.getFlowerDifficulty(flowerName);
                 
+                // Build difficulty stars
                 StringBuilder stars = new StringBuilder();
                 for (int j = 0; j < difficulty; j++) {
                     stars.append("★");
@@ -134,26 +111,13 @@ public class ShopActions {
                     stars.append("☆");
                 }
 
-                // Simplified Display: Name, Growth Stage, Cost, Difficulty (stars)
-				System.out.printf("%d: Buy %s Seed %s - %d credits\n", 
+				System.out.printf("%d: %s Seed %s - %d credits\n", 
 					i + 1, flowerName, stars, (int)cost);
 			}
 			
-			// 2. Display Cart contents (subtle, only if cart has items)
-            if (!cart.isEmpty()) {
-                System.out.print("   Cart: ");
-                for (PurchaseItem item : cart) {
-                    System.out.printf("%dx %s (%.0f), ", item.quantity, item.name, item.totalCost);
-                }
-                System.out.println();
-            }
-            
-            // 3. Add the final menu option for purchasing (N+1 option)
-			System.out.printf("%d: Purchase Cart (%.0f total credits)\n", 
-				currentSeedSelection.size() + 1, currentTotalCost);
 			System.out.println("0: Back to Shop Menu");
 
-			System.out.print("\nChoice (1-" + (currentSeedSelection.size() + 1) + ", 0 to exit): ");
+			System.out.print("\nWhich seed would you like to buy? (1-" + currentSeedSelection.size() + ", 0 to exit): ");
 			
 			int choice;
 			try {
@@ -172,118 +136,76 @@ public class ShopActions {
 
 			if (choice == 0) {
 				buyingSeeds = false;
-                System.out.println("Leaving the seed shop. Cart contents discarded.");
+				System.out.println("Returning to shop menu.");
 			
-            // 4. Handle Purchase Cart option (N+1)
-			} else if (choice == currentSeedSelection.size() + 1) {
-				if (cart.isEmpty()) {
-					System.out.println("Your cart is empty. Select seeds to add them first.");
-				} else {
-					// Finalize Purchase: deduct credits, add to inventory, log to journal, save game.
-					finalizePurchase(player, cart);
-					cart.clear(); // Reset the cart after purchase
-				}
-			
-            // 5. Handle adding a seed to the cart (1 to N options)
 			} else if (choice >= 1 && choice <= currentSeedSelection.size()) {
 				String flowerName = currentSeedSelection.get(choice - 1);
 				double seedCost = FlowerRegistry.getSeedCost(flowerName);
                 
-                System.out.print("How many " + flowerName + " seeds would you like to add to the cart (Cost: " + (int)seedCost + " each)? ");
+                // Ask how many
+                System.out.print("\nHow many " + flowerName + " seeds would you like to buy? (Cost: " + (int)seedCost + " each, or 0 to cancel): ");
 				
                 int quantity;
 				try {
 					String quantityInput = scanner.nextLine().trim();
                     if (quantityInput.isEmpty()) {
-                        System.out.println("Invalid quantity. Aborting purchase.");
+                        System.out.println("Purchase cancelled.");
                         continue;
                     }
 					quantity = Integer.parseInt(quantityInput);
 				} catch (NumberFormatException e) {
-					System.out.println("Invalid quantity input. Aborting purchase.");
+					System.out.println("Invalid quantity input. Purchase cancelled.");
 					continue;
 				}
 				
 				if (quantity <= 0) {
-					System.out.println("Addition to cart cancelled.");
+					System.out.println("Purchase cancelled.");
 					continue;
 				}
 				
 				double totalCost = seedCost * quantity;
 				
-				// Check for existing item in cart and update, or add new item
-				boolean found = false;
-				for (PurchaseItem item : cart) {
-					if (item.name.equals(flowerName)) {
-						item.quantity += quantity;
-						item.totalCost += totalCost;
-						found = true;
-						break;
+				// Check if player can afford it
+				if (player.getCredits() < totalCost) {
+					System.out.println("\n❌ You don't have enough credits! Need " + (int)totalCost + ", have " + (int)player.getCredits());
+					continue;
+				}
+				
+				// Confirm purchase
+				System.out.print("\nBuy " + quantity + "x " + flowerName + " for " + (int)totalCost + " credits? (yes/no): ");
+				String confirm = scanner.nextLine().toLowerCase();
+				
+				if (!confirm.equals("yes")) {
+					System.out.println("Purchase cancelled.");
+					continue;
+				}
+				
+				// Execute purchase
+				player.setCredits(player.getCredits() - (int)totalCost);
+				
+				for (int i = 0; i < quantity; i++) {
+					Flower seed = FlowerRegistry.createSeed(flowerName);
+					if (seed != null) {
+						player.addToInventory(seed);
 					}
 				}
-				if (!found) {
-					cart.add(new PurchaseItem(flowerName, quantity, totalCost));
-				}
 				
-				System.out.printf("%d x %s added to cart (Current cart total: %.0f).\n", quantity, flowerName, cart.stream().mapToDouble(item -> item.totalCost).sum());
+				System.out.println("\n✅ Purchase successful! Bought " + quantity + "x " + flowerName + " seed(s).");
+				System.out.println("Credits remaining: " + (int)player.getCredits());
+				
+				// Journal entry
+				String journalEntry = "Purchased " + quantity + "x " + flowerName + " seed(s) for " + (int)totalCost + " credits.";
+				Journal.addJournalEntry(player, journalEntry);
+				Journal.saveGame(player);
 				
 			} else {
-				System.out.println("Invalid selection! Please enter a number between 1 and " + (currentSeedSelection.size() + 1) + ".");
+				System.out.println("Invalid selection! Please enter a number between 1 and " + currentSeedSelection.size() + ".");
 			}
 		}
-	}
-    
-	/**
-	 * Finalizes the purchase of items in the cart.
-	 * Updates player's credits, inventory, journal, and saves the game.
-	 * @param player The player instance.
-	 * @param cart The list of items to purchase.
-	 */
-	private static void finalizePurchase(Player1 player, List<PurchaseItem> cart) {
-		double grandTotal = cart.stream().mapToDouble(item -> item.totalCost).sum();
-
-		if (player.getCredits() < grandTotal) {
-			System.out.println("\n❌ You don't have enough credits! Need " + (int)grandTotal + ", have " + (int)player.getCredits());
-			return;
-		}
-
-		// Process transaction
-		player.setCredits(player.getCredits() - (int)grandTotal);
-		StringBuilder journalEntry = new StringBuilder("Purchased seeds: ");
-		
-		System.out.println("\n✅ Purchase successful! Credits remaining: " + (int)player.getCredits());
-		
-		for (PurchaseItem item : cart) {
-			// Add seeds to inventory
-			for (int i = 0; i < item.quantity; i++) {
-				Flower seed = FlowerRegistry.createSeed(item.name);
-				if (seed != null) {
-					player.addToInventory(seed);
-				}
-			}
-			
-			// Log for journal
-			journalEntry.append(item.quantity).append("x ").append(item.name).append(", ");
-		}
-
-		// Save to journal and game
-		String finalEntry = journalEntry.substring(0, journalEntry.length() - 2) + ". Total cost: " + (int)grandTotal + " credits.";
-		Journal.addJournalEntry(player, finalEntry);
-		Journal.saveGame(player); 
 	}
 
 	/**
 	 * Handles selling items from the player's inventory
-	 * 
-	 * SELLING PRICES:
-	 * - Seeds (not in pot): 50% of seed cost
-	 * - Empty flower pots: 50% of craft cost (10 credits)
-	 * - Seeds in flower pot: 100% pot value (20) + 50% seed cost
-	 * - Seedlings in pot: 100% pot value (20) + 90% flower value
-	 * - Bloomed flowers: 110% of value (+20 if in pot)
-	 * - Matured flowers: 150% of value (+20 if in pot)
-	 * - Mutated flowers: 500% of value (+20 if in pot)
-	 * - Withered flowers: 1 credit (+10 if in pot) - FIX #4
 	 */
 	private static void handleSelling(Player1 player, Scanner scanner) {
 		ArrayList<Object> inventory = player.getInventory();
@@ -302,7 +224,6 @@ public class ShopActions {
 			System.out.println("Current credits: " + (int)player.getCredits());
 			System.out.println("\nYour Items:");
 			
-			// Display all sellable items with calculated prices
 			List<Integer> sellableIndices = new ArrayList<>();
 			int displayIndex = 1;
 			
@@ -354,15 +275,11 @@ public class ShopActions {
 				String confirm = scanner.nextLine().toLowerCase();
 				
 				if (confirm.equals("yes")) {
-					// Remove item from inventory
 					inventory.remove(inventoryIndex);
-					
-					// Add credits to player
 					player.setCredits(player.getCredits() + sellPrice);
 					
 					System.out.println("✅ Sold! You now have " + (int)player.getCredits() + " credits.");
 					
-					// Journal entry
 					Journal.addJournalEntry(player, "Sold " + getItemDescription(itemToSell) + 
 							" for " + sellPrice + " credits.");
 					Journal.saveGame(player);
@@ -377,29 +294,28 @@ public class ShopActions {
 	
 	/**
 	 * Calculates the sell price for an item
-	 * @param item The item to price
-	 * @return The sell price in credits
 	 */
 	private static int calculateSellPrice(Object item) {
+		if (item instanceof Bouquet) {
+			return 0; // Bouquets cannot be sold directly, only auctioned
+		}
+		
 		if (item instanceof gardenPlot) {
 			gardenPlot plot = (gardenPlot) item;
 			
-			// Empty flower pot
 			if (plot.isFlowerPot() && !plot.isOccupied()) {
-				return 10; // 50% of 20 credit craft cost
+				return 10;
 			}
 			
-			// Flower pot with plant
 			if (plot.isFlowerPot() && plot.isOccupied()) {
 				Flower plant = plot.getPlantedFlower();
 				int basePrice = calculateFlowerPrice(plant);
 				
-				// For withered in pot: 1 credit + 10 (half pot value) = 11 (fix #4)
 				if (plant.getGrowthStage().equals("Withered")) {
 					return 1 + 10;
 				}
 				
-				return basePrice + 20; // Add full pot value for non-withered
+				return basePrice + 20;
 			}
 		}
 		
@@ -408,13 +324,11 @@ public class ShopActions {
 			return calculateFlowerPrice(flower);
 		}
 		
-		return 0; // Not sellable
+		return 0;
 	}
 	
 	/**
 	 * Calculates the sell price for a flower based on growth stage
-	 * @param flower The flower to price
-	 * @return The sell price in credits
 	 */
 	private static int calculateFlowerPrice(Flower flower) {
 		String stage = flower.getGrowthStage();
@@ -422,31 +336,25 @@ public class ShopActions {
 		
 		switch (stage) {
 			case "Seed":
-				// 50% of seed cost
 				double seedCost = FlowerRegistry.getSeedCost(name);
 				return (int)(seedCost * 0.5);
 				
 			case "Seedling":
-				// 90% of seedling value
 				double seedlingValue = FlowerRegistry.getFlowerValue(name, "Seedling");
 				return (int)(seedlingValue * 0.9);
 				
 			case "Bloomed":
-				// 110% of bloomed value
 				double bloomedValue = FlowerRegistry.getFlowerValue(name, "Bloomed");
 				return (int)(bloomedValue * 1.1);
 				
 			case "Matured":
-				// 150% of matured value
 				double maturedValue = FlowerRegistry.getFlowerValue(name, "Matured");
 				return (int)(maturedValue * 1.5);
 				
 			case "Withered":
-				// Always 1 credit
 				return 1;
 				
 			case "Mutated":
-				// 500% of mutated value
 				double mutatedValue = FlowerRegistry.getFlowerValue(name, "Mutated");
 				return (int)(mutatedValue * 5.0);
 				
@@ -457,10 +365,13 @@ public class ShopActions {
 	
 	/**
 	 * Gets a descriptive string for an inventory item
-	 * @param item The item to describe
-	 * @return Description string
 	 */
 	private static String getItemDescription(Object item) {
+		if (item instanceof Bouquet) {
+			Bouquet bouquet = (Bouquet) item;
+			return "💐 " + bouquet.getDisplayName();
+		}
+		
 		if (item instanceof gardenPlot) {
 			gardenPlot plot = (gardenPlot) item;
 			if (plot.isFlowerPot() && !plot.isOccupied()) {
@@ -483,8 +394,6 @@ public class ShopActions {
 	
 	/**
 	 * Gets an appropriate emoji for a flower's growth stage
-	 * @param stage The growth stage
-	 * @return Emoji string
 	 */
 	private static String getFlowerEmoji(String stage) {
 		switch (stage) {
@@ -496,12 +405,5 @@ public class ShopActions {
 			case "Mutated": return "✨";
 			default: return "🌼";
 		}
-	}
-
-	private static void handleBouquetAuction(Player1 player, Scanner scanner) {
-		System.out.println("\n🎨 Bouquet Auction 🎨");
-		System.out.println("Coming soon!");
-		System.out.println("Press Enter to return to shop menu...");
-		scanner.nextLine();
 	}
 }

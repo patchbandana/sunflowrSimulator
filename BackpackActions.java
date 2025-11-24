@@ -1,12 +1,6 @@
 /* BackpackActions.java
  * Handles inventory display and item management
- * Created to modularize sunflowerSimulator.java
- * 
- * UPDATED: Enhanced with interactive inventory management
- * - Use items (seeds with flower pots)
- * - Rearrange items
- * - Dispose of items permanently
- * - Create bouquets (coming soon)
+ * Updated: November 21, 2025
  */
 
 import java.util.ArrayList;
@@ -16,8 +10,6 @@ public class BackpackActions {
     
     /**
      * Main backpack interface with interactive options
-     * @param player The player
-     * @param scanner Scanner for user input
      */
     public static void displayBackpack(Player1 player, Scanner scanner) {
         boolean inBackpack = true;
@@ -27,7 +19,6 @@ public class BackpackActions {
             System.out.println("Current resources: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
             System.out.println();
             
-            // Display inventory contents
             ArrayList<Object> inventory = player.getInventory();
             
             if (inventory.isEmpty()) {
@@ -41,8 +32,9 @@ public class BackpackActions {
             System.out.println("1: Use an item");
             System.out.println("2: Rearrange items");
             System.out.println("3: Dispose of an item");
-            System.out.println("4: Create a bouquet");
-            System.out.println("5: Return to main menu");
+            System.out.println("4: Create Bouquet");
+            System.out.println("5: Disassemble Bouquet");
+            System.out.println("6: Return to main menu");
             
             System.out.print("\nChoice: ");
             String backpackChoice = scanner.nextLine();
@@ -61,10 +53,14 @@ public class BackpackActions {
                     break;
                     
                 case "4":
-                    handleCreateBouquet(player, scanner);
+                    BouquetActions.handleCreateBouquet(player, scanner);
                     break;
                     
                 case "5":
+                    BouquetActions.handleDisassembleBouquet(player, scanner);
+                    break;
+                    
+                case "6":
                     inBackpack = false;
                     break;
                     
@@ -76,14 +72,16 @@ public class BackpackActions {
     
     /**
      * Displays all inventory items with formatting
-     * @param inventory The player's inventory
      */
     private static void displayInventoryItems(ArrayList<Object> inventory) {
         for (int i = 0; i < inventory.size(); i++) {
             Object item = inventory.get(i);
             System.out.print((i + 1) + ": ");
             
-            if (item instanceof Flower) {
+            if (item instanceof Bouquet) {
+                Bouquet bouquet = (Bouquet) item;
+                System.out.println(bouquet.getDisplayName());
+            } else if (item instanceof Flower) {
                 Flower flower = (Flower) item;
                 System.out.println(flower.toString());
             } else if (item instanceof gardenPlot) {
@@ -103,15 +101,8 @@ public class BackpackActions {
         }
     }
     
-    // ========================================
-    // USE ITEM
-    // ========================================
-    
     /**
      * Handles using items from inventory
-     * Currently supports: Eating seeds, Planting seed in flower pot
-     * @param player The player
-     * @param scanner Scanner for user input
      */
     private static void handleUseItem(Player1 player, Scanner scanner) {
         ArrayList<Object> inventory = player.getInventory();
@@ -135,7 +126,6 @@ public class BackpackActions {
         
         Object selectedItem = inventory.get(itemChoice - 1);
         
-        // Determine what can be done with this item
         if (selectedItem instanceof Flower) {
             useFlower(player, (Flower) selectedItem, scanner);
         } else if (selectedItem instanceof gardenPlot) {
@@ -150,9 +140,6 @@ public class BackpackActions {
     
     /**
      * Handles using a flower (eating seeds or planting in flower pot)
-     * @param player The player
-     * @param flower The flower to use
-     * @param scanner Scanner for user input
      */
     private static void useFlower(Player1 player, Flower flower, Scanner scanner) {
         String stage = flower.getGrowthStage();
@@ -189,8 +176,6 @@ public class BackpackActions {
     
     /**
      * Eats a seed to restore NRG
-     * @param player The player
-     * @param seed The seed to eat
      */
     private static void eatSeed(Player1 player, Flower seed) {
         if (seed instanceof FlowerInstance) {
@@ -210,14 +195,10 @@ public class BackpackActions {
     
     /**
      * Plants a seed in an empty flower pot from inventory
-     * @param player The player
-     * @param seed The seed to plant
-     * @param scanner Scanner for user input
      */
     private static void plantSeedInFlowerPot(Player1 player, Flower seed, Scanner scanner) {
         ArrayList<Object> inventory = player.getInventory();
         
-        // Find empty flower pots
         ArrayList<Integer> emptyPotIndices = new ArrayList<>();
         for (int i = 0; i < inventory.size(); i++) {
             Object item = inventory.get(i);
@@ -235,7 +216,6 @@ public class BackpackActions {
             return;
         }
         
-        // Check if seed can be planted in flower pot
         int difficulty = FlowerRegistry.getFlowerDifficulty(seed.getName());
         if (difficulty >= 4) {
             System.out.println("\n❌ This flower is too difficult (4★+) to plant in a flower pot!");
@@ -250,7 +230,6 @@ public class BackpackActions {
             return;
         }
         
-        // Show available empty pots
         System.out.println("\nAvailable empty flower pots:");
         for (int i = 0; i < emptyPotIndices.size(); i++) {
             System.out.println((i + 1) + ": Empty Flower Pot (slot " + 
@@ -265,7 +244,6 @@ public class BackpackActions {
             return;
         }
         
-        // Plant the seed in the pot
         int potIndex = emptyPotIndices.get(potChoice - 1);
         gardenPlot selectedPot = (gardenPlot) inventory.get(potIndex);
         
@@ -274,8 +252,6 @@ public class BackpackActions {
             System.out.println("The potted plant is still in your backpack.");
             System.out.println("You can place it in your garden when you're ready.");
             
-            // Note: We don't remove the seed from inventory because plantFlower 
-            // modifies the seed's daysPlanted, so it's now part of the pot
             player.removeFromInventory(seed);
             
             Journal.addJournalEntry(player, "Planted a " + seed.getName() + 
@@ -287,9 +263,6 @@ public class BackpackActions {
     
     /**
      * Handles using a flower pot
-     * @param player The player
-     * @param pot The flower pot
-     * @param scanner Scanner for user input
      */
     private static void useFlowerPot(Player1 player, gardenPlot pot, Scanner scanner) {
         if (pot.isOccupied()) {
@@ -304,14 +277,8 @@ public class BackpackActions {
         }
     }
     
-    // ========================================
-    // REARRANGE ITEMS
-    // ========================================
-    
     /**
      * Handles rearranging items in inventory
-     * @param player The player
-     * @param scanner Scanner for user input
      */
     private static void handleRearrangeItems(Player1 player, Scanner scanner) {
         ArrayList<Object> inventory = player.getInventory();
@@ -351,7 +318,6 @@ public class BackpackActions {
             return;
         }
         
-        // Perform the swap
         Object itemToSwap = inventory.remove(itemToMove - 1);
         inventory.add(newPosition - 1, itemToSwap);
         
@@ -362,14 +328,8 @@ public class BackpackActions {
         Journal.saveGame(player);
     }
     
-    // ========================================
-    // DISPOSE ITEM
-    // ========================================
-    
     /**
      * Handles permanently disposing of an item
-     * @param player The player
-     * @param scanner Scanner for user input
      */
     private static void handleDisposeItem(Player1 player, Scanner scanner) {
         ArrayList<Object> inventory = player.getInventory();
@@ -394,9 +354,11 @@ public class BackpackActions {
         
         Object selectedItem = inventory.get(itemChoice - 1);
         
-        // Show item details and confirm
         System.out.println("\nYou selected:");
-        if (selectedItem instanceof Flower) {
+        if (selectedItem instanceof Bouquet) {
+            Bouquet bouquet = (Bouquet) selectedItem;
+            System.out.println("  " + bouquet.getDisplayName());
+        } else if (selectedItem instanceof Flower) {
             Flower flower = (Flower) selectedItem;
             System.out.println("  " + flower.toString());
         } else if (selectedItem instanceof gardenPlot) {
@@ -418,7 +380,10 @@ public class BackpackActions {
         
         if (confirmation.equals("DELETE")) {
             String itemName;
-            if (selectedItem instanceof Flower) {
+            if (selectedItem instanceof Bouquet) {
+                Bouquet bouquet = (Bouquet) selectedItem;
+                itemName = bouquet.getDisplayName();
+            } else if (selectedItem instanceof Flower) {
                 Flower flower = (Flower) selectedItem;
                 itemName = flower.getName() + " (" + flower.getGrowthStage() + ")";
             } else if (selectedItem instanceof gardenPlot) {
@@ -444,43 +409,8 @@ public class BackpackActions {
         }
     }
     
-    // ========================================
-    // CREATE BOUQUET
-    // ========================================
-    
-    /**
-     * Handles creating bouquets from flowers
-     * @param player The player
-     * @param scanner Scanner for user input
-     */
-    private static void handleCreateBouquet(Player1 player, Scanner scanner) {
-        System.out.println("\n💐 Create a Bouquet 💐");
-        System.out.println();
-        System.out.println("🎨 Coming Soon! 🎨");
-        System.out.println();
-        System.out.println("This feature will allow you to arrange your harvested flowers");
-        System.out.println("into beautiful bouquets that sell for premium prices!");
-        System.out.println();
-        System.out.println("Ideas for bouquet mechanics:");
-        System.out.println("  • Combine 3-5 flowers of different types");
-        System.out.println("  • Color coordination bonuses");
-        System.out.println("  • Rarity bonuses for mutated flowers");
-        System.out.println("  • Special arrangements for matching growth stages");
-        System.out.println("  • Auction system for high-value bouquets");
-        System.out.println();
-        System.out.println("Press Enter to return...");
-        scanner.nextLine();
-    }
-    
-    // ========================================
-    // HELPER METHODS
-    // ========================================
-    
     /**
      * Gets a valid item choice from user input
-     * @param scanner Scanner for user input
-     * @param maxChoice Maximum valid choice
-     * @return Valid choice (1 to maxChoice) or 0 for cancel
      */
     private static int getValidItemChoice(Scanner scanner, int maxChoice) {
         while (true) {
@@ -498,10 +428,7 @@ public class BackpackActions {
     }
     
     /**
-     * Gets a valid choice from user input (alias for clarity)
-     * @param scanner Scanner for user input
-     * @param maxChoice Maximum valid choice
-     * @return Valid choice (1 to maxChoice) or 0 for cancel
+     * Gets a valid choice from user input
      */
     private static int getValidChoice(Scanner scanner, int maxChoice) {
         return getValidItemChoice(scanner, maxChoice);

@@ -8,6 +8,7 @@
  * - Added durability penalty for not weeding
  * - Soil quality now affects mutation probability (Bad: 0.5x, Magic: 2x)
  * - Soil quality now affects withering probability (Magic soil extends lifecycle)
+ * - UPDATED: Mulcher effect reduces weed growth to 0.25x speed
  */
 
 public class gardenPlot {
@@ -89,7 +90,8 @@ public class gardenPlot {
             case 5:
                 return soilQuality.equals("Great") || soilQuality.equals("Magic");
             case 4:
-                return soilQuality.equals("Good") || soilQuality.equals("Great") || soilQuality.equals("Magic");
+                return soilQuality.equals("Good") || soilQuality.equals("Great") || 
+                       soilQuality.equals("Magic");
             case 3:
                 return !soilQuality.equals("Bad");
             default:
@@ -243,12 +245,21 @@ public class gardenPlot {
     /**
      * Advances the day for this garden plot, grows the plant if conditions are met
      * ENHANCED: Soil quality affects mutation/withering, escalating water penalties
+     * UPDATED: Mulcher reduces weed growth to 0.25x speed
+     * @param player Reference to player (for mulcher check)
      */
-    public boolean advanceDay() {
+    public boolean advanceDay(Player1 player) {
         if (!isOccupied()) {
             this.isWatered = false;
             if (!isFlowerPot) {
-                this.isWeeded = Math.random() > 0.7;
+                // MODIFIED: Apply mulcher effect to weed growth
+                double weedChance = 0.3; // Base 30% chance of weeds (inverse of 70% clean)
+                
+                if (player != null && player.isMulcherActive()) {
+                    weedChance *= 0.25; // Reduce to 7.5% chance with mulcher
+                }
+                
+                this.isWeeded = Math.random() > weedChance;
             }
             return false;
         }
@@ -305,7 +316,12 @@ public class gardenPlot {
         if (plantedFlower.getGrowthStage().equals("Withered")) {
             this.isWatered = false;
             if (!isFlowerPot) {
-                this.isWeeded = Math.random() > 0.7;
+                // MODIFIED: Apply mulcher effect to weed growth
+                double weedChance = 0.3;
+                if (player != null && player.isMulcherActive()) {
+                    weedChance *= 0.25;
+                }
+                this.isWeeded = Math.random() > weedChance;
             } else {
                 this.isWeeded = true;
             }
@@ -395,7 +411,14 @@ public class gardenPlot {
         // Reset daily states
         this.isWatered = false;
         if (!isFlowerPot) {
-            this.isWeeded = Math.random() > 0.7;
+            // MODIFIED: Apply mulcher effect to weed growth
+            double weedChance = 0.3; // Base 30% chance of weeds
+            
+            if (player != null && player.isMulcherActive()) {
+                weedChance *= 0.25; // Reduce to 7.5% chance with mulcher
+            }
+            
+            this.isWeeded = Math.random() > weedChance;
         } else {
             this.isWeeded = true;
         }

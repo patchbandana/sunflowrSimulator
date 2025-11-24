@@ -1,7 +1,6 @@
 /* BuildingActions.java
  * Handles all building-related actions including flower pot crafting and garden plot expansion
- * Created to modularize sunflowerSimulator.java
- * 
+ * Updated: November 23, 2025 - Added compost bin access
  */
 
 import java.util.Scanner;
@@ -14,58 +13,84 @@ public class BuildingActions {
 	 * @param scanner Scanner for user input
 	 */
 	public static void handleBuildMenu(Player1 player, Scanner scanner) {
-		boolean inBuildMenu = true;
+	    boolean inBuildMenu = true;
 
-		while (inBuildMenu) {
-			displayBuildMenu(player);
+	    while (inBuildMenu) {
+	        displayBuildMenu(player);
+	        
+	        System.out.print("\nChoice: ");
+	        String buildChoice = scanner.nextLine();
 
-			System.out.print("\nChoice: ");
-			String buildChoice = scanner.nextLine();
-
-			int currentPlots = player.getGardenPlots().size();
-			int placedFlowerPots = player.getPlacedFlowerPotCount();
-
-			// Calculate what option number corresponds to what action
-			int flowerPotOption = 1;
-			int gardenPlotOption = 2;
-			int compostBinOption = -1;
-			int useCompostOption = -1;
-			int returnOption = 3;
-
-			// Check if compost bin build option should be shown
-			if (player.hasBuiltExtraPlot() && !player.hasCompostBin()) {
-				compostBinOption = 3;
-				returnOption = 4;
-			}
-
-			// Check if use compost option should be shown (if already built)
-			if (player.hasCompostBin()) {
-				useCompostOption = 3;
-				returnOption = 4;
-			}
-
-			int choice;
-			try {
-				choice = Integer.parseInt(buildChoice);
-			} catch (NumberFormatException e) {
-				System.out.println("Invalid choice. Please enter a number.");
-				continue;
-			}
-
-			if (choice == flowerPotOption) {
-				craftFlowerPot(player, scanner);
-			} else if (choice == gardenPlotOption) {
-				digNewGardenPlot(player, scanner);
-			} else if (compostBinOption != -1 && choice == compostBinOption) {
-				buildCompostBin(player, scanner);
-			} else if (useCompostOption != -1 && choice == useCompostOption) {
-				CompostActions.handleCompostBin(player, scanner);
-			} else if (choice == returnOption) {
-				inBuildMenu = false;
-			} else {
-				System.out.println("Invalid choice. Please try again.");
-			}
-		}
+	        // Dynamic option mapping based on what's available
+	        int currentOption = 1;
+	        
+	        // Option 1: Always Craft Flower Pot
+	        if (buildChoice.equals(String.valueOf(currentOption))) {
+	            craftFlowerPot(player, scanner);
+	            currentOption++;
+	            continue;
+	        }
+	        currentOption++;
+	        
+	        // Option 2: Always Dig New Garden Plot
+	        if (buildChoice.equals(String.valueOf(currentOption))) {
+	            digNewGardenPlot(player, scanner);
+	            currentOption++;
+	            continue;
+	        }
+	        currentOption++;
+	        
+	        // Option 3: Build Compost Bin (if not built)
+	        if (!player.hasCompostBin()) {
+	            if (buildChoice.equals(String.valueOf(currentOption))) {
+	                buildCompostBin(player, scanner);
+	                currentOption++;
+	                continue;
+	            }
+	            currentOption++;
+	        }
+	        
+	        // NEW: Use Compost Bin (if built)
+	        if (player.hasCompostBin()) {
+	            if (buildChoice.equals(String.valueOf(currentOption))) {
+	                CompostActions.handleCompostBin(player, scanner);
+	                currentOption++;
+	                continue;
+	            }
+	            currentOption++;
+	        }
+	        
+	        // Compost upgrades (if compost bin exists)
+	        if (player.hasCompostBin()) {
+	            // Mulcher option
+	            if (!player.hasMulcher()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installMulcher(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+	            
+	            // Sprinkler option
+	            if (!player.hasSprinklerSystem()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installSprinklerSystem(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+	        }
+	        
+	        // Return option (always last)
+	        if (buildChoice.equals(String.valueOf(currentOption))) {
+	            inBuildMenu = false;
+	            continue;
+	        }
+	        
+	        System.out.println("Invalid choice. Please try again.");
+	    }
 	}
 
 
@@ -74,56 +99,86 @@ public class BuildingActions {
 	 * @param player The player
 	 */
 	private static void displayBuildMenu(Player1 player) {
-		System.out.println("\n🔨 Build Menu 🔨");
-		System.out.println("Current resources: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
-		System.out.println();
+	    System.out.println("\n🔨 Build Menu 🔨");
+	    System.out.println("Current resources: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+	    System.out.println();
 
-		// Show current stats
-		int currentPlots = player.getGardenPlots().size();
-		int placedFlowerPots = player.getPlacedFlowerPotCount();
-		int inventoryFlowerPots = player.getInventoryFlowerPotCount();
-		int totalFlowerPots = placedFlowerPots + inventoryFlowerPots;
-		int regularPlotCount = currentPlots - placedFlowerPots;
+	    // Show current stats
+	    int currentPlots = player.getGardenPlots().size();
+	    int placedFlowerPots = player.getPlacedFlowerPotCount();
+	    int inventoryFlowerPots = player.getInventoryFlowerPotCount();
+	    int totalFlowerPots = placedFlowerPots + inventoryFlowerPots;
 
-		System.out.println("📊 Your Garden Status:");
-		System.out.println("  • Regular Garden Plots: " + regularPlotCount);
-		System.out.println("  • Flower Pots (placed): " + placedFlowerPots);
-		System.out.println("  • Flower Pots (inventory): " + inventoryFlowerPots);
-		System.out.println("  • Total Flower Pots: " + totalFlowerPots + "/10");
+	    System.out.println("📊 Your Garden Status:");
+	    System.out.println("  • Regular Garden Plots: " + (currentPlots - placedFlowerPots));
+	    System.out.println("  • Flower Pots (placed): " + placedFlowerPots);
+	    System.out.println("  • Flower Pots (inventory): " + inventoryFlowerPots);
+	    System.out.println("  • Total Flower Pots: " + totalFlowerPots + "/10");
+	    
+	    // Show compost bin upgrades if applicable
+	    if (player.hasCompostBin()) {
+	        System.out.println("\n🔧 Compost Bin Status:");
+	        System.out.println("  ✅ Compost Bin built");
+	        System.out.println("     Withered flowers: " + player.getCompostWitheredCount() + "/10");
+	        
+	        if (player.hasMulcher()) {
+	            System.out.println("  ✅ Mulcher installed");
+	            if (player.isMulcherActive()) {
+	                System.out.println("     (Active: " + player.getMulcherDaysRemaining() + " days remaining)");
+	            }
+	        } else {
+	            System.out.println("  ❌ Mulcher not installed");
+	        }
+	        
+	        if (player.hasSprinklerSystem()) {
+	            System.out.println("  ✅ Sprinkler system installed");
+	        } else {
+	            System.out.println("  ❌ Sprinkler system not installed");
+	        }
+	    }
+	    
+	    System.out.println();
 
-		if (player.hasCompostBin()) {
-			System.out.println("  • Compost Bin: ✅ Built (Withered: " + 
-					player.getCompostWitheredCount() + "/10)");
-		}
+	    int optionNum = 1;
+	    System.out.println("What would you like to build?");
+	    System.out.println(optionNum + ": Craft a Flower Pot (20 credits, 2 NRG)");
+	    optionNum++;
 
-		System.out.println();
+	    // Calculate cost for next garden plot
+	    int regularPlotCount = currentPlots - placedFlowerPots;
+	    int[] costs = calculatePlotCost(regularPlotCount);
+	    int plotNRGCost = costs[0];
+	    int plotCreditCost = costs[1];
 
-		int optionNum = 1;
-		System.out.println("What would you like to do?");
-		System.out.println(optionNum + ": Craft a Flower Pot (20 credits, 2 NRG)");
-		optionNum++;
-
-		// Calculate cost for next garden plot (excluding flower pots from count)
-		int[] costs = calculatePlotCost(regularPlotCount);
-		int plotNRGCost = costs[0];
-		int plotCreditCost = costs[1];
-
-		System.out.println(optionNum + ": Dig a New Garden Plot (" + plotCreditCost + " credits, " + plotNRGCost + " NRG)");
-		optionNum++;
-
-		// Show compost bin build option if unlocked but not built
-		if (player.hasBuiltExtraPlot() && !player.hasCompostBin()) {
-			System.out.println(optionNum + ": Build Compost Bin (50 credits, 10 NRG)");
-			optionNum++;
-		}
-
-		// Show use compost option if already built
-		if (player.hasCompostBin()) {
-			System.out.println(optionNum + ": Use Compost Bin");
-			optionNum++;
-		}
-
-		System.out.println(optionNum + ": Return to Main Menu");
+	    System.out.println(optionNum + ": Dig a New Garden Plot (" + plotCreditCost + " credits, " + plotNRGCost + " NRG)");
+	    optionNum++;
+	    
+	    // Compost bin option (only if not built yet)
+	    if (!player.hasCompostBin()) {
+	        System.out.println(optionNum + ": Build Compost Bin (50 credits, 10 NRG)");
+	        optionNum++;
+	    }
+	    
+	    // NEW: Use compost bin (only if built)
+	    if (player.hasCompostBin()) {
+	        System.out.println(optionNum + ": Use Compost Bin (fertilize all, add withered flowers)");
+	        optionNum++;
+	    }
+	    
+	    // Compost bin upgrades (only if compost bin exists)
+	    if (player.hasCompostBin()) {
+	        if (!player.hasMulcher()) {
+	            System.out.println(optionNum + ": Install Mulcher (300 credits, 1 NRG)");
+	            optionNum++;
+	        }
+	        
+	        if (!player.hasSprinklerSystem()) {
+	            System.out.println(optionNum + ": Install Sprinkler System (20 credits, 20 NRG)");
+	            optionNum++;
+	        }
+	    }
+	    
+	    System.out.println(optionNum + ": Return to Main Menu");
 	}
 
 
@@ -381,5 +436,109 @@ public class BuildingActions {
 		} else {
 			System.out.println("Construction cancelled.");
 		}
+	}
+	
+	/**
+	 * Handles mulcher installation
+	 */
+	private static void installMulcher(Player1 player, Scanner scanner) {
+	    System.out.println("\n🔧 Mulcher Installation 🔧");
+	    System.out.println("Cost: 300 credits, 1 NRG");
+	    System.out.println();
+	    System.out.println("The mulcher upgrade processes weeds into compost material.");
+	    System.out.println();
+	    System.out.println("Benefits:");
+	    System.out.println("  ✓ After weeding garden, weeds grow at 0.25x speed for 7 days");
+	    System.out.println("  ✓ Reduces risk of durability damage from neglected weeds");
+	    System.out.println("  ✓ Frees up NRG for other tasks");
+	    System.out.println("  ✓ Does not apply to flower pots (they never need weeding)");
+	    System.out.println();
+	    
+	    // Check resources
+	    if (player.getCredits() < 300) {
+	        System.out.println("❌ You don't have enough credits! Need 300, have " + player.getCredits());
+	        System.out.println("Press Enter to continue...");
+	        scanner.nextLine();
+	        return;
+	    }
+	    
+	    if (player.getNRG() < 1) {
+	        System.out.println("❌ You don't have enough energy! Need 1 NRG, have " + player.getNRG());
+	        System.out.println("Press Enter to continue...");
+	        scanner.nextLine();
+	        return;
+	    }
+	    
+	    System.out.print("Install the mulcher? (yes/no): ");
+	    String confirm = scanner.nextLine().toLowerCase();
+	    
+	    if (confirm.equals("yes")) {
+	        player.setCredits(player.getCredits() - 300);
+	        player.setNRG(player.getNRG() - 1);
+	        player.installMulcher();
+	        
+	        System.out.println("\n✅ Mulcher installed successfully!");
+	        System.out.println("The next time you weed your garden, weeds will grow much slower for 7 days!");
+	        System.out.println();
+	        System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+	        
+	        Journal.addJournalEntry(player, "Installed a mulcher on the compost bin.");
+	        Journal.saveGame(player);
+	    } else {
+	        System.out.println("Installation cancelled.");
+	    }
+	}
+
+	/**
+	 * Handles sprinkler system installation
+	 */
+	private static void installSprinklerSystem(Player1 player, Scanner scanner) {
+	    System.out.println("\n💧 Sprinkler System Installation 💧");
+	    System.out.println("Cost: 20 credits, 20 NRG");
+	    System.out.println();
+	    System.out.println("An automated sprinkler system for your garden plots.");
+	    System.out.println();
+	    System.out.println("Benefits:");
+	    System.out.println("  ✓ Watering garden plots costs 0 NRG (was 1 NRG each)");
+	    System.out.println("  ✓ Watering specific plots costs 0 NRG");
+	    System.out.println("  ✓ Only applies to regular garden plots");
+	    System.out.println("  ✗ Flower pots still require 1 NRG to water");
+	    System.out.println("  ℹ️  Plants still dry out daily - you must remember to water!");
+	    System.out.println();
+	    
+	    // Check resources
+	    if (player.getCredits() < 20) {
+	        System.out.println("❌ You don't have enough credits! Need 20, have " + player.getCredits());
+	        System.out.println("Press Enter to continue...");
+	        scanner.nextLine();
+	        return;
+	    }
+	    
+	    if (player.getNRG() < 20) {
+	        System.out.println("❌ You don't have enough energy! Need 20 NRG, have " + player.getNRG());
+	        System.out.println("Press Enter to continue...");
+	        scanner.nextLine();
+	        return;
+	    }
+	    
+	    System.out.print("Install the sprinkler system? (yes/no): ");
+	    String confirm = scanner.nextLine().toLowerCase();
+	    
+	    if (confirm.equals("yes")) {
+	        player.setCredits(player.getCredits() - 20);
+	        player.setNRG(player.getNRG() - 20);
+	        player.installSprinklerSystem();
+	        
+	        System.out.println("\n✅ Sprinkler system installed successfully!");
+	        System.out.println("Watering garden plots now costs 0 NRG!");
+	        System.out.println("(Flower pots still require manual watering for 1 NRG each)");
+	        System.out.println();
+	        System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+	        
+	        Journal.addJournalEntry(player, "Installed an automated sprinkler system.");
+	        Journal.saveGame(player);
+	    } else {
+	        System.out.println("Installation cancelled.");
+	    }
 	}
 }

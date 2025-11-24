@@ -1,17 +1,14 @@
-/* Pat Eizenga
- * 2023-19-06
- * Description: Player Save File for manipulating the player's stats and details
- * 
- * UPDATES:
- * - Added dream tracking system for unlockable dream journal
- * - Modified advanceDay to use summary journal entries instead of per-plant entries
- * - FIXED: Growth notifications now only report actual stage changes
+/* Player1.java
+ * Player data management and day advancement
+ * Updated: November 21, 2025
  */
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Player1 {
 
@@ -20,28 +17,28 @@ public class Player1 {
 	private int credits;
 	private int day;
 
-	// Inventory to store anything - flowers, seeds, items
 	private ArrayList<Object> inventory;
-
-	// Journal entries list to store player's journal entries in memory
 	private List<String> journalEntries;
-
-	// Garden plots list to store player's garden plots
 	private List<gardenPlot> gardenPlots;
 
-	// Tracking for flower pots
 	private int flowerPotsCrafted;
 	private static final int MAX_FLOWER_POTS = 10;
 
-	// Track if player has built their first additional plot (for hints)
 	private boolean hasBuiltExtraPlot;
-
-	// NEW: Track unlocked dreams (excluding hints)
 	private Set<String> unlockedDreams;
+	private Set<String> unlockedHints;
 
-	// Compost bin tracking
 	private boolean hasCompostBin;
 	private int compostWitheredCount;
+	
+	private AuctionHouse auctionHouse;
+	private Map<String, String> knownBouquetCompositions;
+	private Map<String, Integer> bouquetHighScores;
+	
+	// Compost bin upgrades
+	private boolean hasMulcher;
+	private int mulcherDaysRemaining; // Days of 0.25x weed growth remaining
+	private boolean hasSprinklerSystem;
 
 	public Player1(String name) {
 		this.name = name;
@@ -53,28 +50,32 @@ public class Player1 {
 		this.flowerPotsCrafted = 0;
 		this.hasBuiltExtraPlot = false;
 		this.unlockedDreams = new HashSet<>();
+		this.unlockedHints = new HashSet<>();
 
 		this.hasCompostBin = false;
 		this.compostWitheredCount = 0;
+		
+		this.auctionHouse = new AuctionHouse();
+		this.knownBouquetCompositions = new HashMap<>();
+		this.bouquetHighScores = new HashMap<>();
 
-		// Initialize with 3 garden plots
 		this.gardenPlots = new ArrayList<>();
 		for (int i = 0; i < 3; i++) {
 			this.gardenPlots.add(new gardenPlot());
 		}
+		this.hasMulcher = false;
+	    this.mulcherDaysRemaining = 0;
+	    this.hasSprinklerSystem = false;
 	}
 
-	// Inventory add method
 	public void addToInventory(Object item) {
 		inventory.add(item);
 	}
 
-	// Inventory remove method
 	public boolean removeFromInventory(Object item) {
 		return inventory.remove(item);
 	}
 
-	// Inventory remove at index method
 	public Object removeFromInventory(int index) {
 		if (index >= 0 && index < inventory.size()) {
 			return inventory.remove(index);
@@ -82,17 +83,14 @@ public class Player1 {
 		return null;
 	}
 
-	// Inventory getter method
 	public ArrayList<Object> getInventory() {
 		return inventory;
 	}
 
-	// Garden plots getter method
 	public List<gardenPlot> getGardenPlots() {
 		return gardenPlots;
 	}
 
-	// Get a specific garden plot
 	public gardenPlot getGardenPlot(int index) {
 		if (index >= 0 && index < gardenPlots.size()) {
 			return gardenPlots.get(index);
@@ -100,17 +98,14 @@ public class Player1 {
 		return null;
 	}
 
-	// Add a new garden plot
 	public void addGardenPlot() {
 		gardenPlots.add(new gardenPlot());
 	}
 
-	// Add a flower pot to the garden
 	public void addFlowerPotToGarden(gardenPlot flowerPot) {
 		gardenPlots.add(flowerPot);
 	}
 
-	// Count how many flower pots are currently placed in the garden
 	public int getPlacedFlowerPotCount() {
 		int count = 0;
 		for (gardenPlot plot : gardenPlots) {
@@ -121,7 +116,6 @@ public class Player1 {
 		return count;
 	}
 
-	// Count how many flower pots are in the inventory
 	public int getInventoryFlowerPotCount() {
 		int count = 0;
 		for (Object item : inventory) {
@@ -132,43 +126,35 @@ public class Player1 {
 		return count;
 	}
 
-	// Check if player can craft more flower pots
 	public boolean canCraftFlowerPot() {
 		int totalFlowerPots = getPlacedFlowerPotCount() + getInventoryFlowerPotCount();
 		return totalFlowerPots < MAX_FLOWER_POTS;
 	}
 
-	// Get total flower pots (placed + in inventory)
 	public int getTotalFlowerPots() {
 		return getPlacedFlowerPotCount() + getInventoryFlowerPotCount();
 	}
 
-	// Craft a flower pot
 	public void craftFlowerPot() {
 		flowerPotsCrafted++;
 	}
 
-	// Get total flower pots ever crafted
 	public int getFlowerPotsCrafted() {
 		return flowerPotsCrafted;
 	}
 
-	// Set flower pots crafted (for save/load)
 	public void setFlowerPotsCrafted(int count) {
 		this.flowerPotsCrafted = count;
 	}
 
-	// Check if player has built extra plot
 	public boolean hasBuiltExtraPlot() {
 		return hasBuiltExtraPlot;
 	}
 
-	// Set that player has built extra plot
 	public void setHasBuiltExtraPlot(boolean hasBuilt) {
 		this.hasBuiltExtraPlot = hasBuilt;
 	}
 
-	// NEW: Dream tracking methods
 	public void unlockDream(String dreamFilename) {
 		unlockedDreams.add(dreamFilename);
 	}
@@ -180,8 +166,27 @@ public class Player1 {
 	public Set<String> getUnlockedDreams() {
 		return new HashSet<>(unlockedDreams);
 	}
+	
+	public void unlockHint(String hintFilename) {
+	    unlockedHints.add(hintFilename);
+	}
 
-	// Compost bin methods
+	public boolean hasHintUnlocked(String hintFilename) {
+	    return unlockedHints.contains(hintFilename);
+	}
+
+	public Set<String> getUnlockedHints() {
+	    return new HashSet<>(unlockedHints);
+	}
+
+	public void setUnlockedHints(Set<String> hints) {
+	    this.unlockedHints = new HashSet<>(hints);
+	}
+
+	public int getUnlockedHintCount() {
+	    return unlockedHints.size();
+	}
+
 	public boolean hasCompostBin() {
 		return hasCompostBin;
 	}
@@ -199,7 +204,7 @@ public class Player1 {
 	}
 
 	public void setCompostWitheredCount(int count) {
-		this.compostWitheredCount = Math.max(0, count); // Never negative
+		this.compostWitheredCount = Math.max(0, count);
 	}
 
 	public void setUnlockedDreams(Set<String> dreams) {
@@ -210,7 +215,6 @@ public class Player1 {
 		return unlockedDreams.size();
 	}
 
-	// Journal entries methods
 	public void addJournalEntry(String entry) {
 		journalEntries.add(entry);
 	}
@@ -223,7 +227,6 @@ public class Player1 {
 		this.journalEntries = entries;
 	}
 
-	// Pretty print the backpack
 	public void printInventory() {
 		if (inventory.isEmpty()) {
 			System.out.println("Your backpack is empty.");
@@ -235,7 +238,6 @@ public class Player1 {
 		}
 	}
 
-	// Pretty print the garden
 	public void printGarden() {
 		System.out.println("\n🌱 Your Garden 🌱");
 		for (int i = 0; i < gardenPlots.size(); i++) {
@@ -244,7 +246,6 @@ public class Player1 {
 		}
 	}
 
-	// Existing getters/setters and gameplay fields
 	public String getName() {
 		return name;
 	}
@@ -269,32 +270,163 @@ public class Player1 {
 		return day;
 	}
 
+	public AuctionHouse getAuctionHouse() {
+	    return auctionHouse;
+	}
+
+	public void setAuctionHouse(AuctionHouse auctionHouse) {
+	    this.auctionHouse = auctionHouse;
+	}
+
+	public void addKnownBouquetComposition(String signature, String customName) {
+	    knownBouquetCompositions.put(signature, customName);
+	}
+
+	public boolean hasKnownBouquetComposition(String signature) {
+	    return knownBouquetCompositions.containsKey(signature);
+	}
+
+	public String getKnownBouquetName(String signature) {
+	    return knownBouquetCompositions.get(signature);
+	}
+
+	public Map<String, String> getKnownBouquetCompositions() {
+	    return new HashMap<>(knownBouquetCompositions);
+	}
+
+	public void setKnownBouquetCompositions(Map<String, String> compositions) {
+	    this.knownBouquetCompositions = new HashMap<>(compositions);
+	}
+
+	public void recordBouquetSale(String signature, String customName, int salePrice) {
+	    if (customName != null && !customName.isEmpty()) {
+	        Integer currentHigh = bouquetHighScores.get(signature);
+	        if (currentHigh == null || salePrice > currentHigh) {
+	            bouquetHighScores.put(signature, salePrice);
+	            
+	            if (!knownBouquetCompositions.containsKey(signature)) {
+	                knownBouquetCompositions.put(signature, customName);
+	            }
+	        }
+	    }
+	}
+
+	public Integer getBouquetHighScore(String signature) {
+	    return bouquetHighScores.get(signature);
+	}
+
+	public Map<String, Integer> getBouquetHighScores() {
+	    return new HashMap<>(bouquetHighScores);
+	}
+
+	public void setBouquetHighScores(Map<String, Integer> highScores) {
+	    this.bouquetHighScores = new HashMap<>(highScores);
+	}
+	
+	/**
+	 * Checks if player has installed the mulcher upgrade
+	 */
+	public boolean hasMulcher() {
+	    return hasMulcher;
+	}
+
+	/**
+	 * Sets mulcher installation status
+	 */
+	public void setHasMulcher(boolean hasMulcher) {
+	    this.hasMulcher = hasMulcher;
+	}
+
+	/**
+	 * Installs the mulcher upgrade
+	 */
+	public void installMulcher() {
+	    this.hasMulcher = true;
+	}
+
+	/**
+	 * Gets remaining days of mulcher effect
+	 */
+	public int getMulcherDaysRemaining() {
+	    return mulcherDaysRemaining;
+	}
+
+	/**
+	 * Sets mulcher days remaining
+	 */
+	public void setMulcherDaysRemaining(int days) {
+	    this.mulcherDaysRemaining = Math.max(0, days);
+	}
+
+	/**
+	 * Activates mulcher effect for 7 days (called when player weeds garden)
+	 */
+	public void activateMulcherEffect() {
+	    if (hasMulcher) {
+	        this.mulcherDaysRemaining = 7;
+	    }
+	}
+
+	/**
+	 * Decrements mulcher days (called in advanceDay)
+	 */
+	public void decrementMulcherDays() {
+	    if (mulcherDaysRemaining > 0) {
+	        mulcherDaysRemaining--;
+	    }
+	}
+
+	/**
+	 * Checks if mulcher effect is currently active
+	 */
+	public boolean isMulcherActive() {
+	    return hasMulcher && mulcherDaysRemaining > 0;
+	}
+
+	/**
+	 * Checks if player has installed the sprinkler system
+	 */
+	public boolean hasSprinklerSystem() {
+	    return hasSprinklerSystem;
+	}
+
+	/**
+	 * Sets sprinkler system installation status
+	 */
+	public void setHasSprinklerSystem(boolean hasSprinklerSystem) {
+	    this.hasSprinklerSystem = hasSprinklerSystem;
+	}
+
+	/**
+	 * Installs the sprinkler system upgrade
+	 */
+	public void installSprinklerSystem() {
+	    this.hasSprinklerSystem = true;
+	}
+
 	public void advanceDay() {
 		this.day++;
-		this.nrg = 10; // Refresh energy each day
+		this.nrg = 10;
+		
+		decrementMulcherDays();
 
 		int totalGrew = 0;
 		int totalMutated = 0;
 		int totalWithered = 0;
 		int soilUpgrades = 0;
 
-		// Advance all garden plots
 		for (int i = 0; i < gardenPlots.size(); i++) {
 			gardenPlot plot = gardenPlots.get(i);
 			String previousSoil = plot.getSoilQuality();
 
-			// Track stage BEFORE advancement
 			String stageBefore = plot.isOccupied() ? plot.getPlantedFlower().getGrowthStage() : null;
 
-			// Advance the plot
-			plot.advanceDay();
+			plot.advanceDay(this);
 
-			// Track stage AFTER advancement
 			String stageAfter = plot.isOccupied() ? plot.getPlantedFlower().getGrowthStage() : null;
 
 			String newSoil = plot.getSoilQuality();
 
-			// Check if soil quality upgraded
 			if (!previousSoil.equals(newSoil)) {
 				soilUpgrades++;
 				String plotType = plot.isFlowerPot() ? "flower pot" : "plot #" + (i + 1);
@@ -302,7 +434,6 @@ public class Player1 {
 						previousSoil + " to " + newSoil + "!");
 			}
 
-			// Count ONLY if stage actually changed (not just growth attempted)
 			if (stageBefore != null && stageAfter != null && !stageBefore.equals(stageAfter)) {
 				if (stageAfter.equals("Mutated")) {
 					totalMutated++;
@@ -314,7 +445,6 @@ public class Player1 {
 			}
 		}
 
-		// UPDATED: Add summary entries instead of per-plant entries
 		if (totalGrew > 0) {
 			if (totalGrew == 1) {
 				addJournalEntry("🌱 1 plant grew overnight!");
@@ -339,7 +469,13 @@ public class Player1 {
 			}
 		}
 
-		// Check for any plots that need watering/weeding
+		if (auctionHouse.hasActiveAuction()) {
+		    String bidResult = auctionHouse.processDailyBid(this.day, this);
+		    if (bidResult != null) {
+		        addJournalEntry(bidResult);
+		    }
+		}
+
 		boolean needsWater = false;
 		boolean needsWeeding = false;
 
