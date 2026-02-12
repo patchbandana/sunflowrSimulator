@@ -1,8 +1,8 @@
 /* Creator: Pat Eizenga
  * Created: June 18, 2024
- * Last Updated: November 23, 2025
+ * Last Updated: November 25, 2025
  * Project: Open source gardening game developed with love, focus and dreams
- * UPDATED: Fixed dream/hint system to prevent duplicates
+ * UPDATED: Fixed weather to occur independently of dreams/hints (25% chance always)
  */
 
 import java.util.Scanner;
@@ -182,9 +182,13 @@ public class sunflowerSimulator {
 		String dreamContent = null;
 		String dreamFilename = null;
 		boolean showedHint = false;
+		boolean weatherOccurred = false;
+
+		// WEATHER SYSTEM CHECK - Independent 25% chance
+		weatherOccurred = WeatherSystem.shouldWeatherOccur();
 
 		// Special hint for day 30+ if player hasn't built extra plot
-		if (player.getDay() >= 30 && !player.hasBuiltExtraPlot() && HintReader.hasHints()) {
+		if (!weatherOccurred && player.getDay() >= 30 && !player.hasBuiltExtraPlot() && HintReader.hasHints()) {
 			if (Math.random() < 0.5) {
 				dreamContent = HintReader.getSpecificHint("build_expansion.txt");
 				if (dreamContent == null) {
@@ -197,56 +201,56 @@ public class sunflowerSimulator {
 			}
 		}
 
-		// NEW: Filter out already-unlocked dreams and hints to prevent duplicates
+		// Get all available dream files
+		List<String> allDreamFiles = new ArrayList<>();
+		try {
+			File dreamDir = new File("dream.txt/");
+			if (dreamDir.exists() && dreamDir.isDirectory()) {
+				File[] files = dreamDir.listFiles((dir, name) -> name.endsWith(".txt"));
+				if (files != null) {
+					for (File file : files) {
+						allDreamFiles.add(file.getName());
+					}
+				}
+			}
+		} catch (Exception e) {
+			// Silent fail
+		}
+		
+		// Filter out already-unlocked dreams
+		List<String> unviewedDreams = new ArrayList<>();
+		for (String dreamFile : allDreamFiles) {
+			if (!player.hasDreamUnlocked(dreamFile)) {
+				unviewedDreams.add(dreamFile);
+			}
+		}
+		
+		// Get all available hint files
+		List<String> allHintFiles = new ArrayList<>();
+		try {
+			File hintDir = new File("hints.txt/");
+			if (hintDir.exists() && hintDir.isDirectory()) {
+				File[] files = hintDir.listFiles((dir, name) -> name.endsWith(".txt"));
+				if (files != null) {
+					for (File file : files) {
+						allHintFiles.add(file.getName());
+					}
+				}
+			}
+		} catch (Exception e) {
+			// Silent fail
+		}
+		
+		// Filter out already-unlocked hints
+		List<String> unviewedHints = new ArrayList<>();
+		for (String hintFile : allHintFiles) {
+			if (!player.hasHintUnlocked(hintFile)) {
+				unviewedHints.add(hintFile);
+			}
+		}
+		
+		// Dreams/hints can still occur even if weather happens
 		if (dreamContent == null) {
-			// Get all available dream files
-			List<String> allDreamFiles = new ArrayList<>();
-			try {
-				File dreamDir = new File("dream.txt/");
-				if (dreamDir.exists() && dreamDir.isDirectory()) {
-					File[] files = dreamDir.listFiles((dir, name) -> name.endsWith(".txt"));
-					if (files != null) {
-						for (File file : files) {
-							allDreamFiles.add(file.getName());
-						}
-					}
-				}
-			} catch (Exception e) {
-				// Silent fail
-			}
-			
-			// Filter out already-unlocked dreams
-			List<String> unviewedDreams = new ArrayList<>();
-			for (String dreamFile : allDreamFiles) {
-				if (!player.hasDreamUnlocked(dreamFile)) {
-					unviewedDreams.add(dreamFile);
-				}
-			}
-			
-			// Get all available hint files
-			List<String> allHintFiles = new ArrayList<>();
-			try {
-				File hintDir = new File("hints.txt/");
-				if (hintDir.exists() && hintDir.isDirectory()) {
-					File[] files = hintDir.listFiles((dir, name) -> name.endsWith(".txt"));
-					if (files != null) {
-						for (File file : files) {
-							allHintFiles.add(file.getName());
-						}
-					}
-				}
-			} catch (Exception e) {
-				// Silent fail
-			}
-			
-			// Filter out already-unlocked hints
-			List<String> unviewedHints = new ArrayList<>();
-			for (String hintFile : allHintFiles) {
-				if (!player.hasHintUnlocked(hintFile)) {
-					unviewedHints.add(hintFile);
-				}
-			}
-			
 			// 25% chance of dream/hint if any are available
 			if ((!unviewedDreams.isEmpty() || !unviewedHints.isEmpty()) && Math.random() < 0.25) {
 				boolean tryHint = false;
@@ -287,11 +291,20 @@ public class sunflowerSimulator {
 			}
 		}
 
+		// Display weather FIRST if it occurred
+		if (weatherOccurred) {
+			String weatherDesc = WeatherSystem.getWeatherDescription();
+			if (weatherDesc != null) {
+				System.out.println("\n" + weatherDesc);
+			}
+		}
+		
+		// Then display dream/hint if applicable
 		if (dreamContent != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("╔════════════════════════════════════════╗");
+			System.out.println("╔═══════════════════════════════════════╗");
 			System.out.println(dreamContent);
-			System.out.println("╚════════════════════════════════════════╝");
+			System.out.println("╚═══════════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
@@ -304,37 +317,59 @@ public class sunflowerSimulator {
 					Journal.addJournalEntry(player, "Had a vivid dream tonight.");
 				}
 			}
-		} else {
+		} else if (!weatherOccurred) {
+			// Only show this if no weather AND no dream
 			System.out.println("\nYou slept soundly through the night. It's a new day! :D");
 			Journal.addJournalEntry(player, "Slept soundly through the night.");
 		}
 
+		// Advance day (plants grow, daily state resets)
 		player.advanceDay();
+		
+		// Apply weather effects AFTER plants have grown
+		if (weatherOccurred) {
+			WeatherSystem.applyWeatherEffects(player);
+		}
+		
 		ShopActions.resetShopInventory(); 
 
 		System.out.println("\n🌅 Day " + player.getDay() + " begins.");
 		System.out.println("You feel refreshed! (NRG restored to " + player.getNRG() + ")");
 
-		displayGardenSummary(player);
+		displayGardenSummary(player, weatherOccurred);
 	}
 
-	private static void displayGardenSummary(Player1 player) {
+	private static void displayGardenSummary(Player1 player, boolean weatherOccurred) {
 		final String[] SUMMARY_KEYWORDS = {
 				"grew overnight!", 
 				"mutated into something special!", 
-				"withered overnight."
+				"withered overnight.",
+				"watered", // Weather-related
+				"damaged", // Weather-related
+				"prevented", // Weather-related
+				"earthquake", // Weather-related
+				"hurricane", // Weather-related
+				"Moles", // Weather-related
+				"fairies" // Weather-related
 		};
 
 		final Map<String, String> CONSOLE_EMOJI_MAP = new HashMap<>();
 		CONSOLE_EMOJI_MAP.put("grew overnight!", "✓");
 		CONSOLE_EMOJI_MAP.put("mutated into something special!", "✨");
 		CONSOLE_EMOJI_MAP.put("withered overnight.", "⚠");
+		CONSOLE_EMOJI_MAP.put("watered", "💧");
+		CONSOLE_EMOJI_MAP.put("damaged", "⚡");
+		CONSOLE_EMOJI_MAP.put("prevented", "❄️");
+		CONSOLE_EMOJI_MAP.put("earthquake", "🌋");
+		CONSOLE_EMOJI_MAP.put("hurricane", "🌀");
+		CONSOLE_EMOJI_MAP.put("Moles", "🐭");
+		CONSOLE_EMOJI_MAP.put("fairies", "🧚");
 
 		List<String> summaryMessages = new ArrayList<>();
 		List<String> allEntries = player.getJournalEntries();
 
 		int totalEntries = allEntries.size();
-		int checkStart = Math.max(0, totalEntries - 10); 
+		int checkStart = Math.max(0, totalEntries - 15); 
 
 		for (int i = totalEntries - 1; i >= checkStart; i--) {
 			String entry = allEntries.get(i);
@@ -369,7 +404,12 @@ public class sunflowerSimulator {
 						bodyMessage = message;
 					}
 
-					message = consoleEmoji + " " + bodyMessage;
+					// Only add emoji if we have one
+					if (consoleEmoji != null) {
+						message = consoleEmoji + " " + bodyMessage;
+					} else {
+						message = bodyMessage;
+					}
 
 					summaryMessages.add(message);
 				}
@@ -385,6 +425,14 @@ public class sunflowerSimulator {
 
 			for (int i = summaryMessages.size() - 1; i >= 0; i--) {
 				System.out.println("  " + summaryMessages.get(i));
+			}
+		}
+		
+		// Show weather summary if applicable
+		if (weatherOccurred) {
+			String weatherSummary = WeatherSystem.getWeatherSummary();
+			if (weatherSummary != null) {
+				System.out.println("\n🌤️ Weather: " + weatherSummary);
 			}
 		}
 	}
