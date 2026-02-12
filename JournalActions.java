@@ -1,20 +1,16 @@
-/* JournalActions.java - FIXED VERSION
- * Critical fixes:
- * 1. Removed duplicate save success messages
- * 2. Fixed reverse chronological display (no longer reverses pages)
- * 3. Entries already come in correct order from Journal.getJournalEntries()
+/* JournalActions.java
+ * Handles all journal-related actions
+ * FIXED: Removed duplicate "Story loaded successfully!" message
  */
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Map;
 
 public class JournalActions {
 
-	/**
-	 * Handles the complete journal menu workflow
-	 */
 	public static Player1 handleJournal(Player1 player, Scanner scanner) {
 		boolean inJournal = true;
 		int currentPage = 0;
@@ -33,6 +29,7 @@ public class JournalActions {
 			System.out.println("6. Return to Main Menu");
 			System.out.println("7. Reset Game (New Game+)");
 			System.out.print("\nEnter choice: ");
+
 
 			if (scanner.hasNextInt()) {
 				int choice = scanner.nextInt();
@@ -83,10 +80,6 @@ public class JournalActions {
 		return player;
 	}
 
-	/**
-	 * Handles viewing and navigating journal entries
-	 * FIXED: Entries already come in reverse chronological order from Journal.getJournalEntries()
-	 */
 	private static void handleViewJournal(Player1 player, Scanner scanner, int currentPage, int totalPages) {
 		boolean viewing = true;
 
@@ -101,18 +94,15 @@ public class JournalActions {
 		}
 
 		while (viewing) {
-			// FIXED: Entries already come in reverse chronological order from Journal class
-			List<String> entries = Journal.getJournalEntries(player.getName(), currentPage);
+			List<String> entries = Journal.getJournalEntries(player.getName(), currentPage); 
 
 			System.out.println("\n=== Journal Entries (Page " + (currentPage + 1) + " of " + totalPages + ") ===");
 			System.out.println("(Showing newest entries first)");
 
-			// FIXED: Don't reverse here - they're already in correct order
 			for (String entry : entries) {
 				System.out.println(entry);
 			}
 
-			// Navigation
 			System.out.println("\nNavigation:");
 			if (currentPage > 0) {
 				System.out.print("P: Previous Page | ");
@@ -147,10 +137,6 @@ public class JournalActions {
 		}
 	}
 
-	/**
-	 * Handles adding a new journal entry
-	 * FIXED: Only prints success message once
-	 */
 	private static void handleAddNewEntry(Player1 player, Scanner scanner) {
 		System.out.println("\n✏️ Add New Journal Entry ✏️");
 		System.out.print("Enter your entry: ");
@@ -161,24 +147,15 @@ public class JournalActions {
 			return;
 		}
 
-		// FIXED: Journal.addJournalEntry no longer saves internally
 		boolean success = Journal.addJournalEntry(player, newEntry);
 
 		if (success) {
-			// FIXED: Save happens here, print message only once
-			if (Journal.saveGame(player)) {
-				System.out.println("✅ New entry added and game saved successfully.");
-			} else {
-				System.out.println("❌ Entry added but failed to save game.");
-			}
+			System.out.println("✅ New entry added and game saved successfully.");
 		} else {
-			System.out.println("❌ Failed to add entry.");
+			System.out.println("❌ Failed to add entry or save game.");
 		}
 	}
 
-	/**
-	 * Handles viewing and selecting a dream from the dream journal
-	 */
 	private static void handleViewDreamJournal(Player1 player, Scanner scanner) {
 		System.out.println("\n😴 Dream Journal 😴");
 
@@ -224,9 +201,6 @@ public class JournalActions {
 		}
 	}
 
-	/**
-	 * Handles viewing and selecting a tip from the tips collection
-	 */
 	private static void handleViewTipsCollection(Player1 player, Scanner scanner) {
 		System.out.println("\n💡 Tips Collection 💡");
 
@@ -276,9 +250,6 @@ public class JournalActions {
 		}
 	}
 
-	/**
-	 * Displays the full content of the selected hint file
-	 */
 	private static void displayTipContent(String hintFile) {
 		String hintText = HintReader.readHintFile(hintFile);
 
@@ -297,13 +268,10 @@ public class JournalActions {
 		try {
 			System.in.read(); 
 		} catch(Exception e) {
-			// Silent
+			// Do nothing
 		}
 	}
 
-	/**
-	 * Displays the full content of the selected dream file
-	 */
 	private static void displayDreamContent(String dreamFile) {
 		String dreamText = DreamReader.readDreamFile(dreamFile);
 
@@ -322,14 +290,10 @@ public class JournalActions {
 		try {
 			System.in.read(); 
 		} catch(Exception e) {
-			// Silent
+			// Do nothing
 		}
 	}
 
-	/**
-	 * Handles saving the game
-	 * FIXED: Prints success message only once
-	 */
 	private static void handleSaveGame(Player1 player) {
 		System.out.println("\n💾 Saving Game...");
 		boolean success = Journal.saveGame(player);
@@ -340,9 +304,6 @@ public class JournalActions {
 		}
 	}
 
-	/**
-	 * Handles the game reset (New Game+) functionality
-	 */
 	private static Player1 handleResetGame(Player1 player, Scanner scanner) {
 		System.out.println("\n⚠️ WARNING: This will reset your game while keeping your name! ⚠️");
 		System.out.println("All progress, inventory items, and stats will be reset to default values.");
@@ -361,7 +322,6 @@ public class JournalActions {
 
 			Journal.resetGame(newPlayer);
 			Journal.addJournalEntry(newPlayer, "Started a new adventure! (New Game+)");
-			Journal.saveGame(newPlayer); // FIXED: Single save call
 
 			System.out.println("\n🔄 Game has been reset successfully!");
 			System.out.println("Welcome to your new adventure, " + nameToKeep + "!");

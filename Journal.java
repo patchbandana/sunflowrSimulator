@@ -1,9 +1,4 @@
 /* Journal.java - FIXED VERSION
- * Critical fixes applied:
- * 1. Hard 100-entry limit enforcement during save AND load
- * 2. Entries stored in chronological order, displayed in reverse
- * 3. Removed duplicate save success messages
- * 4. Fixed day incrementing timing
  */
 
 import java.io.*;
@@ -12,509 +7,570 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class Journal {
-    private static final String SAVE_DIRECTORY = "saves/";
-    public static final int ENTRIES_PER_PAGE = 5;
-    public static final int MAX_PAGES = 20;
-    public static final int MAX_ENTRIES = ENTRIES_PER_PAGE * MAX_PAGES; // 100 entries HARD LIMIT
-    
-    private static class PlotData {
-        boolean watered;
-        boolean weeded;
-        boolean fertilized;
-        String soilQuality;
-        boolean isFlowerPot;
-        int consecutiveDaysWithoutWater;
-        String[] flowerData;
-        
-        PlotData() {
-            this.watered = false;
-            this.weeded = true;
-            this.fertilized = false;
-            this.soilQuality = "Average";
-            this.isFlowerPot = false;
-            this.consecutiveDaysWithoutWater = 0;
-            this.flowerData = null;
-        }
-    }
-    
-    /**
-     * Saves the player's current state to a journal file
-     * FIXED: No longer prints success message (handled by caller)
-     * FIXED: Enforces 100-entry hard limit before saving
-     */
-    public static boolean saveGame(Player1 player) {
-        File directory = new File(SAVE_DIRECTORY);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        
-        String filename = SAVE_DIRECTORY + player.getName() + ".txt";
-        
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-            // Write player basic info
-            writer.write("[PLAYER]\n");
-            writer.write("Name=" + player.getName() + "\n");
-            writer.write("NRG=" + player.getNRG() + "\n");
-            writer.write("Credits=" + player.getCredits() + "\n");
-            writer.write("Day=" + player.getDay() + "\n");
-            writer.write("FlowerPotsCrafted=" + player.getFlowerPotsCrafted() + "\n");
-            writer.write("HasBuiltExtraPlot=" + player.hasBuiltExtraPlot() + "\n");
-            
-            // Save compost bin upgrade status
-            writer.write("HasCompostBin=" + player.hasCompostBin() + "\n");
-            writer.write("CompostWitheredCount=" + player.getCompostWitheredCount() + "\n");
-            writer.write("HasMulcher=" + player.hasMulcher() + "\n");
-            writer.write("MulcherDaysRemaining=" + player.getMulcherDaysRemaining() + "\n");
-            writer.write("HasSprinklerSystem=" + player.hasSprinklerSystem() + "\n");
-            
-            LocalDateTime now = LocalDateTime.now();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            writer.write("SaveDate=" + now.format(formatter) + "\n");
-            
-            // Save unlocked dreams
-            writer.write("[UNLOCKED_DREAMS]\n");
-            for (String dreamFile : player.getUnlockedDreams()) {
-                writer.write("Dream=" + dreamFile + "\n");
-            }
-            
-            // Save unlocked hints
-            writer.write("[UNLOCKED_HINTS]\n");
-            for (String hintFile : player.getUnlockedHints()) {
-                writer.write("Hint=" + hintFile + "\n");
-            }
-            
-            // Write inventory items
-            writer.write("[INVENTORY]\n");
-            ArrayList<Object> inventory = player.getInventory();
-            
-            for (Object item : inventory) {
-                if (item instanceof Flower) {
-                    Flower flower = (Flower) item;
-                    writer.write("Flower=" + flower.getName() + "," +
-                                 flower.getGrowthStage() + "," +
-                                 flower.getDaysPlanted() + "," +
-                                 flower.getDurability() + "," +
-                                 flower.getCost());
-                    
-                    if (item instanceof FlowerInstance) {
-                        writer.write("," + ((FlowerInstance) item).getNRGRestored());
-                    }
-                    
-                    writer.write("\n");
-                } else if (item instanceof gardenPlot) {
-                    gardenPlot pot = (gardenPlot) item;
-                    if (pot.isFlowerPot()) {
-                        writer.write("FlowerPot=empty\n");
-                    }
-                }
-            }
-            
-            // Write garden plots
-            writer.write("[GARDEN_PLOTS]\n");
-            List<gardenPlot> gardenPlots = player.getGardenPlots();
-            writer.write("PlotCount=" + gardenPlots.size() + "\n");
-            
-            for (int i = 0; i < gardenPlots.size(); i++) {
-                gardenPlot plot = gardenPlots.get(i);
-                writer.write("Plot=" + i + "," + 
-                            plot.isWatered() + "," + 
-                            plot.isWeeded() + "," + 
-                            plot.isFertilized() + "," +
-                            plot.getSoilQuality() + "," +
-                            plot.isFlowerPot() + "," +
-                            plot.getConsecutiveDaysWithoutWater() + "\n");
-                
-                if (plot.isOccupied()) {
-                    Flower flower = plot.getPlantedFlower();
-                    writer.write("PlotFlower=" + i + "," +
-                                flower.getName() + "," +
-                                flower.getGrowthStage() + "," +
-                                flower.getDaysPlanted() + "," +
-                                flower.getDurability() + "," +
-                                flower.getCost());
-                    
-                    if (flower instanceof FlowerInstance) {
-                        writer.write("," + ((FlowerInstance) flower).getNRGRestored());
-                    }
-                    
-                    writer.write("\n");
-                }
-            }
-            
-            // CRITICAL FIX: Enforce 100-entry limit BEFORE saving
-            List<String> allEntries = player.getJournalEntries();
-            if (allEntries.size() > MAX_ENTRIES) {
-                // Keep only the most recent 100 entries
-                List<String> trimmedEntries = new ArrayList<>(
-                    allEntries.subList(allEntries.size() - MAX_ENTRIES, allEntries.size())
-                );
-                player.setJournalEntries(trimmedEntries);
-                allEntries = trimmedEntries;
-            }
-            
-            // Write journal entries (stored chronologically, oldest to newest)
-            writer.write("[JOURNAL_ENTRIES]\n");
-            for (String entry : allEntries) {
-                // Entries are already formatted as "Day X (date): message"
-                // Extract components to save in parseable format
-                if (entry.startsWith("Day ")) {
-                    int dayEnd = entry.indexOf(" (");
-                    int dateEnd = entry.indexOf("): ");
-                    
-                    if (dayEnd > 0 && dateEnd > 0) {
-                        String dayPart = entry.substring(4, dayEnd); // Skip "Day "
-                        String datePart = entry.substring(dayEnd + 2, dateEnd); // Skip " ("
-                        String messagePart = entry.substring(dateEnd + 3); // Skip "): "
-                        
-                        writer.write("Entry=" + dayPart + "," + datePart + "," + messagePart + "\n");
-                    }
-                }
-            }
-            
-            return true;
-        } catch (IOException e) {
-            System.out.println("❌ Error saving game: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Loads a player's saved game data
-     * FIXED: Enforces 100-entry limit during load
-     * FIXED: Removed DEBUG print statements
-     */
-    public static Player1 loadGame(String playerName) {
-        String filename = SAVE_DIRECTORY + playerName + ".txt";
-        File saveFile = new File(filename);
-        
-        if (!saveFile.exists()) {
-            return null;
-        }
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            Player1 player = null;
-            String section = "";
-            String line;
-            List<String> journalEntries = new ArrayList<>();
-            Set<String> unlockedDreams = new HashSet<>();
-            Set<String> unlockedHints = new HashSet<>();
-            
-            int expectedPlotCount = 0;
-            Map<Integer, PlotData> plotDataMap = new HashMap<>();
-            
-            while ((line = reader.readLine()) != null) {
-                // Section headers
-                if (line.equals("[PLAYER]")) {
-                    section = "PLAYER";
-                    continue;
-                } else if (line.equals("[UNLOCKED_DREAMS]")) {
-                    section = "UNLOCKED_DREAMS";
-                    continue;
-                } else if (line.equals("[UNLOCKED_HINTS]")) {
-                    section = "UNLOCKED_HINTS";
-                    continue;
-                } else if (line.equals("[INVENTORY]")) {
-                    section = "INVENTORY";
-                    continue;
-                } else if (line.equals("[GARDEN_PLOTS]")) {
-                    section = "GARDEN_PLOTS";
-                    continue;
-                } else if (line.equals("[JOURNAL_ENTRIES]")) {
-                    section = "JOURNAL_ENTRIES";
-                    continue;
-                }
-                
-                // Process data
-                if (section.equals("PLAYER")) {
-                    if (line.startsWith("Name=")) {
-                        String name = line.substring(5);
-                        player = new Player1(name);
-                    } else if (line.startsWith("NRG=")) {
-                        player.setNRG(Integer.parseInt(line.substring(4)));
-                    } else if (line.startsWith("Credits=")) {
-                        player.setCredits(Integer.parseInt(line.substring(8)));
-                    } else if (line.startsWith("Day=")) {
-                        int targetDay = Integer.parseInt(line.substring(4));
-                        while (player.getDay() < targetDay) {
-                            player.advanceDay();
-                        }
-                    } else if (line.startsWith("FlowerPotsCrafted=")) {
-                        player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
-                    } else if (line.startsWith("HasBuiltExtraPlot=")) {
-                        player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
-                    } else if (line.startsWith("HasCompostBin=")) {
-                        player.setHasCompostBin(Boolean.parseBoolean(line.substring(14)));
-                    } else if (line.startsWith("CompostWitheredCount=")) {
-                        player.setCompostWitheredCount(Integer.parseInt(line.substring(21)));
-                    } else if (line.startsWith("HasMulcher=")) {
-                        player.setHasMulcher(Boolean.parseBoolean(line.substring(11)));
-                    } else if (line.startsWith("MulcherDaysRemaining=")) {
-                        player.setMulcherDaysRemaining(Integer.parseInt(line.substring(21)));
-                    } else if (line.startsWith("HasSprinklerSystem=")) {
-                        player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
-                    }
-                } else if (section.equals("UNLOCKED_DREAMS")) {
-                    if (line.startsWith("Dream=")) {
-                        unlockedDreams.add(line.substring(6));
-                    }
-                } else if (section.equals("UNLOCKED_HINTS")) {
-                    if (line.startsWith("Hint=")) {
-                        unlockedHints.add(line.substring(5));
-                    }
-                } else if (section.equals("INVENTORY") && player != null) {
-                    if (line.startsWith("Flower=")) {
-                        String[] flowerData = line.substring(7).split(",");
-                        if (flowerData.length >= 5) {
-                            String name = flowerData[0];
-                            String growthStage = flowerData[1];
-                            int daysPlanted = Integer.parseInt(flowerData[2]);
-                            double durability = Double.parseDouble(flowerData[3]);
-                            double cost = Double.parseDouble(flowerData[4]);
-                            int nrgRestored = (flowerData.length >= 6) ? Integer.parseInt(flowerData[5]) : 1;
-                            
-                            FlowerInstance flower = new FlowerInstance(
-                                name, growthStage, daysPlanted, durability, nrgRestored, cost);
-                            player.addToInventory(flower);
-                        }
-                    } else if (line.startsWith("FlowerPot=")) {
-                        gardenPlot pot = new gardenPlot(true);
-                        player.addToInventory(pot);
-                    }
-                } else if (section.equals("GARDEN_PLOTS") && player != null) {
-                    if (line.startsWith("PlotCount=")) {
-                        expectedPlotCount = Integer.parseInt(line.substring(10));
-                    } else if (line.startsWith("Plot=")) {
-                        String[] plotData = line.substring(5).split(",");
-                        if (plotData.length >= 5) {
-                            int plotIndex = Integer.parseInt(plotData[0]);
-                            PlotData pd = new PlotData();
-                            pd.watered = Boolean.parseBoolean(plotData[1]);
-                            pd.weeded = Boolean.parseBoolean(plotData[2]);
-                            pd.fertilized = Boolean.parseBoolean(plotData[3]);
-                            pd.soilQuality = plotData[4];
-                            
-                            if (plotData.length >= 6) {
-                                pd.isFlowerPot = Boolean.parseBoolean(plotData[5]);
-                            }
-                            
-                            if (plotData.length >= 7) {
-                                pd.consecutiveDaysWithoutWater = Integer.parseInt(plotData[6]);
-                            }
-                            
-                            plotDataMap.put(plotIndex, pd);
-                        }
-                    } else if (line.startsWith("PlotFlower=")) {
-                        String[] flowerData = line.substring(11).split(",");
-                        if (flowerData.length >= 6) {
-                            int plotIndex = Integer.parseInt(flowerData[0]);
-                            PlotData pd = plotDataMap.get(plotIndex);
-                            if (pd != null) {
-                                pd.flowerData = flowerData;
-                            }
-                        }
-                    }
-                } else if (section.equals("JOURNAL_ENTRIES") && player != null) {
-                    if (line.startsWith("Entry=")) {
-                        String[] parts = line.substring(6).split(",", 3);
-                        if (parts.length >= 3) {
-                            String day = parts[0];
-                            String date = parts[1];
-                            String entryText = parts[2];
-                            String formattedEntry = "Day " + day + " (" + date + "): " + entryText;
-                            journalEntries.add(formattedEntry);
-                        }
-                    }
-                }
-            }
-            
-            // Restore garden plots
-            if (player != null && !plotDataMap.isEmpty()) {
-                List<gardenPlot> playerPlots = player.getGardenPlots();
-                playerPlots.clear();
-                
-                for (int i = 0; i < expectedPlotCount; i++) {
-                    PlotData pd = plotDataMap.get(i);
-                    if (pd != null) {
-                        gardenPlot plot = new gardenPlot(pd.isFlowerPot);
-                        plot.setSoilQuality(pd.soilQuality);
-                        plot.setWatered(pd.watered);
-                        plot.setWeeded(pd.weeded);
-                        plot.setFertilized(pd.fertilized);
-                        plot.setConsecutiveDaysWithoutWater(pd.consecutiveDaysWithoutWater);
-                        
-                        playerPlots.add(plot);
-                        
-                        // Restore flower if present
-                        if (pd.flowerData != null) {
-                            String name = pd.flowerData[1];
-                            String growthStage = pd.flowerData[2];
-                            int daysPlanted = Integer.parseInt(pd.flowerData[3]);
-                            double durability = Double.parseDouble(pd.flowerData[4]);
-                            double cost = Double.parseDouble(pd.flowerData[5]);
-                            int nrgRestored = (pd.flowerData.length >= 7) ? Integer.parseInt(pd.flowerData[6]) : 1;
-                            
-                            FlowerInstance flower = new FlowerInstance(
-                                name, growthStage, daysPlanted, durability, nrgRestored, cost);
-                            
-                            plot.forcePlantFlower(flower);
-                        }
-                    } else {
-                        playerPlots.add(new gardenPlot());
-                    }
-                }
-            }
-            
-            // CRITICAL FIX: Enforce 100-entry limit during load
-            if (journalEntries.size() > MAX_ENTRIES) {
-                // Keep only the most recent 100 entries
-                journalEntries = new ArrayList<>(
-                    journalEntries.subList(journalEntries.size() - MAX_ENTRIES, journalEntries.size())
-                );
-            }
-            
-            // Add journal entries to player (stored chronologically)
-            if (player != null && !journalEntries.isEmpty()) {
-                player.setJournalEntries(journalEntries);
-            }
-            
-            // Restore unlocked dreams
-            if (player != null && !unlockedDreams.isEmpty()) {
-                player.setUnlockedDreams(unlockedDreams);
-            }
-            
-            // Restore unlocked hints
-            if (player != null && !unlockedHints.isEmpty()) {
-                player.setUnlockedHints(unlockedHints);
-            }
-            
-            if (player != null) {
-                System.out.println("✅ Story loaded successfully!");
-            }
-            
-            return player;
-        } catch (IOException | NumberFormatException e) {
-            System.out.println("❌ Error loading game: " + e.getMessage());
-            return null;
-        }
-    }
-    
-    /**
-     * Adds a journal entry with automatic pruning to maintain max 100 entries
-     * FIXED: No longer calls saveGame() internally (prevents duplicate saves)
-     * FIXED: Deduplicates consecutive similar messages
-     */
-    public static boolean addJournalEntry(Player1 player, String entry) {
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String formattedEntry = "Day " + player.getDay() + " (" + now.format(formatter) + "): " + entry;
-        
-        // CRITICAL FIX: Deduplicate consecutive similar weed messages
-        List<String> entries = player.getJournalEntries();
-        if (!entries.isEmpty()) {
-            int consecutiveWeedCount = 0;
-            String weedMessage = "Some weeds appeared in the garden.";
-            
-            // Count consecutive weed messages from the end
-            for (int i = entries.size() - 1; i >= 0; i--) {
-                if (entries.get(i).contains(weedMessage)) {
-                    consecutiveWeedCount++;
-                } else {
-                    break;
-                }
-            }
-            
-            // If we already have 3 consecutive weed messages, don't add another
-            if (entry.contains(weedMessage) && consecutiveWeedCount >= 3) {
-                return false; // Silently skip this entry
-            }
-        }
-        
-        // Enforce 100 entry limit - remove oldest if needed
-        if (entries.size() >= MAX_ENTRIES) {
-            entries.remove(0); // Remove oldest entry
-        }
-        
-        player.addJournalEntry(formattedEntry);
-        return true;
-    }
-    
-    /**
-     * Gets journal entries for a specific page (displayed in reverse chronological order)
-     * FIXED: Returns entries in reverse order (newest first)
-     */
-    public static List<String> getJournalEntries(String playerName, int page) {
-        Player1 player = loadGame(playerName);
-        
-        if (player == null) {
-            return new ArrayList<>();
-        }
-        
-        List<String> allEntries = player.getJournalEntries();
-        int totalEntries = allEntries.size();
-        
-        // Calculate indices for reverse chronological display
-        // Page 0 shows entries 99-95 (newest 5)
-        // Page 1 shows entries 94-90 (next 5)
-        int startIndex = Math.max(0, totalEntries - ((page + 1) * ENTRIES_PER_PAGE));
-        int endIndex = Math.max(0, totalEntries - (page * ENTRIES_PER_PAGE));
-        
-        if (startIndex >= totalEntries || page < 0 || startIndex >= endIndex) {
-            return new ArrayList<>();
-        }
-        
-        // Get the slice and reverse it so newest appears first
-        List<String> pageEntries = new ArrayList<>(allEntries.subList(startIndex, endIndex));
-        Collections.reverse(pageEntries);
-        
-        return pageEntries;
-    }
-    
-    /**
-     * Gets total number of journal pages
-     * FIXED: Correctly calculates based on actual entry count
-     */
-    public static int getTotalJournalPages(String playerName) {
-        Player1 player = loadGame(playerName);
-        
-        if (player == null) {
-            return 0;
-        }
-        
-        List<String> allEntries = player.getJournalEntries();
-        int totalEntries = allEntries.size();
-        
-        // Calculate pages: 1-5 entries = 1 page, 6-10 entries = 2 pages, etc.
-        return (int) Math.ceil((double) totalEntries / ENTRIES_PER_PAGE);
-    }
-    
-    public static List<String> getAllJournalEntries(String playerName) {
-        Player1 player = loadGame(playerName);
-        
-        if (player == null) {
-            return new ArrayList<>();
-        }
-        
-        return player.getJournalEntries();
-    }
-    
-    public static boolean saveExists(String playerName) {
-        String filename = SAVE_DIRECTORY + playerName + ".txt";
-        File saveFile = new File(filename);
-        return saveFile.exists();
-    }
-    
-    public static boolean resetGame(Player1 player) {
-        File directory = new File(SAVE_DIRECTORY);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        
-        String filename = SAVE_DIRECTORY + player.getName() + ".txt";
-        File saveFile = new File(filename);
-        if (saveFile.exists()) {
-            saveFile.delete();
-        }
-        
-        return saveGame(player);
-    }
+	private static final String SAVE_DIRECTORY = "saves/";
+	public static final int ENTRIES_PER_PAGE = 5;
+	public static final int MAX_PAGES = 20;
+	public static final int MAX_ENTRIES = ENTRIES_PER_PAGE * MAX_PAGES; // 100 entries HARD LIMIT
+
+	private static class PlotData {
+		boolean watered;
+		boolean weeded;
+		boolean fertilized;
+		String soilQuality;
+		boolean isFlowerPot;
+		int consecutiveDaysWithoutWater;
+		String[] flowerData;
+
+		PlotData() {
+			this.watered = false;
+			this.weeded = true;
+			this.fertilized = false;
+			this.soilQuality = "Average";
+			this.isFlowerPot = false;
+			this.consecutiveDaysWithoutWater = 0;
+			this.flowerData = null;
+		}
+	}
+
+	/**
+	 * Saves the player's current state to a journal file
+	 * FIXED: No longer prints success message (handled by caller)
+	 * FIXED: Enforces 100-entry hard limit before saving
+	 */
+	public static boolean saveGame(Player1 player) {
+		File directory = new File(SAVE_DIRECTORY);
+		if (!directory.exists()) {
+			directory.mkdirs();
+		}
+
+		String filename = SAVE_DIRECTORY + player.getName() + ".txt";
+
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+			// Write player basic info
+			writer.write("[PLAYER]\n");
+			writer.write("Name=" + player.getName() + "\n");
+			writer.write("NRG=" + player.getNRG() + "\n");
+			writer.write("Credits=" + player.getCredits() + "\n");
+			writer.write("Day=" + player.getDay() + "\n");
+			writer.write("FlowerPotsCrafted=" + player.getFlowerPotsCrafted() + "\n");
+			writer.write("HasBuiltExtraPlot=" + player.hasBuiltExtraPlot() + "\n");
+
+			// Save compost bin upgrade status
+			writer.write("HasCompostBin=" + player.hasCompostBin() + "\n");
+			writer.write("CompostWitheredCount=" + player.getCompostWitheredCount() + "\n");
+			writer.write("HasMulcher=" + player.hasMulcher() + "\n");
+			writer.write("MulcherDaysRemaining=" + player.getMulcherDaysRemaining() + "\n");
+			writer.write("HasSprinklerSystem=" + player.hasSprinklerSystem() + "\n");
+
+			LocalDateTime now = LocalDateTime.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+			writer.write("SaveDate=" + now.format(formatter) + "\n");
+
+			// Save unlocked dreams
+			writer.write("[UNLOCKED_DREAMS]\n");
+			for (String dreamFile : player.getUnlockedDreams()) {
+				writer.write("Dream=" + dreamFile + "\n");
+			}
+
+			// Save unlocked hints
+			writer.write("[UNLOCKED_HINTS]\n");
+			for (String hintFile : player.getUnlockedHints()) {
+				writer.write("Hint=" + hintFile + "\n");
+			}
+
+			// Write inventory items
+			writer.write("[INVENTORY]\n");
+			ArrayList<Object> inventory = player.getInventory();
+
+			for (Object item : inventory) {
+				if (item instanceof Flower) {
+					Flower flower = (Flower) item;
+					writer.write("Flower=" + flower.getName() + "," +
+							flower.getGrowthStage() + "," +
+							flower.getDaysPlanted() + "," +
+							flower.getDurability() + "," +
+							flower.getCost());
+
+					if (item instanceof FlowerInstance) {
+						writer.write("," + ((FlowerInstance) item).getNRGRestored());
+					}
+
+					writer.write("\n");
+				} else if (item instanceof gardenPlot) {
+					gardenPlot pot = (gardenPlot) item;
+					if (pot.isFlowerPot()) {
+						writer.write("FlowerPot=empty\n");
+					}
+					// In saveGame() inventory loop, add:
+					else if (item instanceof Bouquet) {
+						Bouquet bouquet = (Bouquet) item;
+						writer.write("Bouquet=" + bouquet.getFlowerCount() + "," + 
+								bouquet.getDayCreated() + "," + 
+								bouquet.getBaseValue());
+						if (bouquet.hasCustomName()) {
+							writer.write("," + bouquet.getCustomName());
+						}
+						writer.write("\n");
+
+						// Save constituent flowers
+						for (int i = 0; i < bouquet.getFlowers().size(); i++) {
+							Flower f = bouquet.getFlowers().get(i);
+							writer.write("BouquetFlower=" + i + "," + /* flower data */ "\n");
+						}
+					}
+				}
+			}
+
+			// Write garden plots
+			writer.write("[GARDEN_PLOTS]\n");
+			List<gardenPlot> gardenPlots = player.getGardenPlots();
+			writer.write("PlotCount=" + gardenPlots.size() + "\n");
+
+			for (int i = 0; i < gardenPlots.size(); i++) {
+				gardenPlot plot = gardenPlots.get(i);
+				writer.write("Plot=" + i + "," + 
+						plot.isWatered() + "," + 
+						plot.isWeeded() + "," + 
+						plot.isFertilized() + "," +
+						plot.getSoilQuality() + "," +
+						plot.isFlowerPot() + "," +
+						plot.getConsecutiveDaysWithoutWater() + "\n");
+
+				if (plot.isOccupied()) {
+					Flower flower = plot.getPlantedFlower();
+					writer.write("PlotFlower=" + i + "," +
+							flower.getName() + "," +
+							flower.getGrowthStage() + "," +
+							flower.getDaysPlanted() + "," +
+							flower.getDurability() + "," +
+							flower.getCost());
+
+					if (flower instanceof FlowerInstance) {
+						writer.write("," + ((FlowerInstance) flower).getNRGRestored());
+					}
+
+					writer.write("\n");
+				}
+			}
+
+			// In Journal.saveGame(), add after [GARDEN_PLOTS]:
+			writer.write("[AUCTION_HOUSE]\n");
+			if (player.getAuctionHouse().hasActiveAuction()) {
+				Bouquet bouquet = player.getAuctionHouse().getCurrentBouquet();
+				writer.write("ActiveAuction=true\n");
+				writer.write("AuctionStartDay=" + player.getAuctionHouse().getAuctionStartDay() + "\n");
+				writer.write("CurrentBid=" + player.getAuctionHouse().getCurrentBid() + "\n");
+				writer.write("BouquetFlowerCount=" + bouquet.getFlowerCount() + "\n");
+
+				// Save each flower in bouquet
+				for (int i = 0; i < bouquet.getFlowers().size(); i++) {
+					Flower f = bouquet.getFlowers().get(i);
+					writer.write("BouquetFlower=" + i + "," + f.getName() + "," + 
+							f.getGrowthStage() + "," + f.getDaysPlanted() + "," + 
+							f.getDurability() + "," + f.getCost() + "\n");
+				}
+
+				if (bouquet.hasCustomName()) {
+					writer.write("BouquetName=" + bouquet.getCustomName() + "\n");
+				}
+
+				// Save applied multipliers
+				for (String mult : player.getAuctionHouse().getAppliedMultipliers()) {
+					writer.write("AppliedMultiplier=" + mult + "\n");
+				}
+			}
+
+			if (player.getAuctionHouse().hasUncollectedEarnings()) {
+				writer.write("UncollectedEarnings=" + player.getAuctionHouse().getEarningsWaiting() + "\n");
+			}
+
+			// Save known bouquet compositions
+			writer.write("[KNOWN_BOUQUETS]\n");
+			for (Map.Entry<String, String> entry : player.getKnownBouquetCompositions().entrySet()) {
+				writer.write("Composition=" + entry.getKey() + "," + entry.getValue());
+				Integer score = player.getBouquetHighScore(entry.getKey());
+				if (score != null) {
+					writer.write("," + score);
+				}
+				writer.write("\n");
+			}
+
+			// CRITICAL FIX: Enforce 100-entry limit BEFORE saving
+			List<String> allEntries = player.getJournalEntries();
+			if (allEntries.size() > MAX_ENTRIES) {
+				// Keep only the most recent 100 entries
+				List<String> trimmedEntries = new ArrayList<>(
+						allEntries.subList(allEntries.size() - MAX_ENTRIES, allEntries.size())
+						);
+				player.setJournalEntries(trimmedEntries);
+				allEntries = trimmedEntries;
+			}
+
+			// Write journal entries (stored chronologically, oldest to newest)
+			writer.write("[JOURNAL_ENTRIES]\n");
+			for (String entry : allEntries) {
+				// Entries are already formatted as "Day X (date): message"
+				// Extract components to save in parseable format
+				if (entry.startsWith("Day ")) {
+					int dayEnd = entry.indexOf(" (");
+					int dateEnd = entry.indexOf("): ");
+
+					if (dayEnd > 0 && dateEnd > 0) {
+						String dayPart = entry.substring(4, dayEnd); // Skip "Day "
+						String datePart = entry.substring(dayEnd + 2, dateEnd); // Skip " ("
+						String messagePart = entry.substring(dateEnd + 3); // Skip "): "
+
+						writer.write("Entry=" + dayPart + "," + datePart + "," + messagePart + "\n");
+					}
+				}
+			}
+
+			return true;
+		} catch (IOException e) {
+			System.out.println("âŒ Error saving game: " + e.getMessage());
+			return false;
+		}
+	}
+
+	/**
+	 * Loads a player's saved game data
+	 * FIXED: Enforces 100-entry limit during load
+	 * FIXED: Removed DEBUG print statements
+	 */
+	public static Player1 loadGame(String playerName) {
+		String filename = SAVE_DIRECTORY + playerName + ".txt";
+		File saveFile = new File(filename);
+
+		if (!saveFile.exists()) {
+			return null;
+		}
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+			Player1 player = null;
+			String section = "";
+			String line;
+			List<String> journalEntries = new ArrayList<>();
+			Set<String> unlockedDreams = new HashSet<>();
+			Set<String> unlockedHints = new HashSet<>();
+
+			int expectedPlotCount = 0;
+			Map<Integer, PlotData> plotDataMap = new HashMap<>();
+
+			while ((line = reader.readLine()) != null) {
+				// Section headers
+				if (line.equals("[PLAYER]")) {
+					section = "PLAYER";
+					continue;
+				} else if (line.equals("[UNLOCKED_DREAMS]")) {
+					section = "UNLOCKED_DREAMS";
+					continue;
+				} else if (line.equals("[UNLOCKED_HINTS]")) {
+					section = "UNLOCKED_HINTS";
+					continue;
+				} else if (line.equals("[INVENTORY]")) {
+					section = "INVENTORY";
+					continue;
+				} else if (line.equals("[GARDEN_PLOTS]")) {
+					section = "GARDEN_PLOTS";
+					continue;
+				} else if (line.equals("[JOURNAL_ENTRIES]")) {
+					section = "JOURNAL_ENTRIES";
+					continue;
+				}
+
+				// Process data
+				if (section.equals("PLAYER")) {
+					if (line.startsWith("Name=")) {
+						String name = line.substring(5);
+						player = new Player1(name);
+					} else if (line.startsWith("NRG=")) {
+						player.setNRG(Integer.parseInt(line.substring(4)));
+					} else if (line.startsWith("Credits=")) {
+						player.setCredits(Integer.parseInt(line.substring(8)));
+					} else if (line.startsWith("Day=")) {
+						int targetDay = Integer.parseInt(line.substring(4));
+						while (player.getDay() < targetDay) {
+							player.advanceDay();
+						}
+					} else if (line.startsWith("FlowerPotsCrafted=")) {
+						player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
+					} else if (line.startsWith("HasBuiltExtraPlot=")) {
+						player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
+					} else if (line.startsWith("HasCompostBin=")) {
+						player.setHasCompostBin(Boolean.parseBoolean(line.substring(14)));
+					} else if (line.startsWith("CompostWitheredCount=")) {
+						player.setCompostWitheredCount(Integer.parseInt(line.substring(21)));
+					} else if (line.startsWith("HasMulcher=")) {
+						player.setHasMulcher(Boolean.parseBoolean(line.substring(11)));
+					} else if (line.startsWith("MulcherDaysRemaining=")) {
+						player.setMulcherDaysRemaining(Integer.parseInt(line.substring(21)));
+					} else if (line.startsWith("HasSprinklerSystem=")) {
+						player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
+					}
+				} else if (section.equals("UNLOCKED_DREAMS")) {
+					if (line.startsWith("Dream=")) {
+						unlockedDreams.add(line.substring(6));
+					}
+				} else if (section.equals("UNLOCKED_HINTS")) {
+					if (line.startsWith("Hint=")) {
+						unlockedHints.add(line.substring(5));
+					}
+				} else if (section.equals("INVENTORY") && player != null) {
+					if (line.startsWith("Flower=")) {
+						String[] flowerData = line.substring(7).split(",");
+						if (flowerData.length >= 5) {
+							String name = flowerData[0];
+							String growthStage = flowerData[1];
+							int daysPlanted = Integer.parseInt(flowerData[2]);
+							double durability = Double.parseDouble(flowerData[3]);
+							double cost = Double.parseDouble(flowerData[4]);
+							int nrgRestored = (flowerData.length >= 6) ? Integer.parseInt(flowerData[5]) : 1;
+
+							FlowerInstance flower = new FlowerInstance(
+									name, growthStage, daysPlanted, durability, nrgRestored, cost);
+							player.addToInventory(flower);
+						}
+					} else if (line.startsWith("FlowerPot=")) {
+						gardenPlot pot = new gardenPlot(true);
+						player.addToInventory(pot);
+					}
+				} else if (section.equals("GARDEN_PLOTS") && player != null) {
+					if (line.startsWith("PlotCount=")) {
+						expectedPlotCount = Integer.parseInt(line.substring(10));
+					} else if (line.startsWith("Plot=")) {
+						String[] plotData = line.substring(5).split(",");
+						if (plotData.length >= 5) {
+							int plotIndex = Integer.parseInt(plotData[0]);
+							PlotData pd = new PlotData();
+							pd.watered = Boolean.parseBoolean(plotData[1]);
+							pd.weeded = Boolean.parseBoolean(plotData[2]);
+							pd.fertilized = Boolean.parseBoolean(plotData[3]);
+							pd.soilQuality = plotData[4];
+
+							if (plotData.length >= 6) {
+								pd.isFlowerPot = Boolean.parseBoolean(plotData[5]);
+							}
+
+							if (plotData.length >= 7) {
+								pd.consecutiveDaysWithoutWater = Integer.parseInt(plotData[6]);
+							}
+
+							plotDataMap.put(plotIndex, pd);
+						}
+					} else if (line.startsWith("PlotFlower=")) {
+						String[] flowerData = line.substring(11).split(",");
+						if (flowerData.length >= 6) {
+							int plotIndex = Integer.parseInt(flowerData[0]);
+							PlotData pd = plotDataMap.get(plotIndex);
+							if (pd != null) {
+								pd.flowerData = flowerData;
+							}
+						}
+					}
+				} else if (section.equals("JOURNAL_ENTRIES") && player != null) {
+					if (line.startsWith("Entry=")) {
+						String[] parts = line.substring(6).split(",", 3);
+						if (parts.length >= 3) {
+							String day = parts[0];
+							String date = parts[1];
+							String entryText = parts[2];
+							String formattedEntry = "Day " + day + " (" + date + "): " + entryText;
+							journalEntries.add(formattedEntry);
+						}
+					}
+				}
+			}
+
+			// Restore garden plots
+			if (player != null && !plotDataMap.isEmpty()) {
+				List<gardenPlot> playerPlots = player.getGardenPlots();
+				playerPlots.clear();
+
+				for (int i = 0; i < expectedPlotCount; i++) {
+					PlotData pd = plotDataMap.get(i);
+					if (pd != null) {
+						gardenPlot plot = new gardenPlot(pd.isFlowerPot);
+						plot.setSoilQuality(pd.soilQuality);
+						plot.setWatered(pd.watered);
+						plot.setWeeded(pd.weeded);
+						plot.setFertilized(pd.fertilized);
+						plot.setConsecutiveDaysWithoutWater(pd.consecutiveDaysWithoutWater);
+
+						playerPlots.add(plot);
+
+						// Restore flower if present
+						if (pd.flowerData != null) {
+							String name = pd.flowerData[1];
+							String growthStage = pd.flowerData[2];
+							int daysPlanted = Integer.parseInt(pd.flowerData[3]);
+							double durability = Double.parseDouble(pd.flowerData[4]);
+							double cost = Double.parseDouble(pd.flowerData[5]);
+							int nrgRestored = (pd.flowerData.length >= 7) ? Integer.parseInt(pd.flowerData[6]) : 1;
+
+							FlowerInstance flower = new FlowerInstance(
+									name, growthStage, daysPlanted, durability, nrgRestored, cost);
+
+							plot.forcePlantFlower(flower);
+						}
+					} else {
+						playerPlots.add(new gardenPlot());
+					}
+				}
+			}
+
+			// CRITICAL FIX: Enforce 100-entry limit during load
+			if (journalEntries.size() > MAX_ENTRIES) {
+				// Keep only the most recent 100 entries
+				journalEntries = new ArrayList<>(
+						journalEntries.subList(journalEntries.size() - MAX_ENTRIES, journalEntries.size())
+						);
+			}
+
+			// Add journal entries to player (stored chronologically)
+			if (player != null && !journalEntries.isEmpty()) {
+				player.setJournalEntries(journalEntries);
+			}
+
+			// Restore unlocked dreams
+			if (player != null && !unlockedDreams.isEmpty()) {
+				player.setUnlockedDreams(unlockedDreams);
+			}
+
+			// Restore unlocked hints
+			if (player != null && !unlockedHints.isEmpty()) {
+				player.setUnlockedHints(unlockedHints);
+			}
+
+			if (player != null) {
+				//System.out.println("âœ… Story loaded successfully!");
+			}
+
+			return player;
+		} catch (IOException | NumberFormatException e) {
+			System.out.println("âŒ Error loading game: " + e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * Adds a journal entry with automatic pruning to maintain max 100 entries
+	 * FIXED: No longer calls saveGame() internally (prevents duplicate saves)
+	 * FIXED: Deduplicates consecutive similar messages
+	 */
+	public static boolean addJournalEntry(Player1 player, String entry) {
+		LocalDateTime now = LocalDateTime.now();
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+		String formattedEntry = "Day " + player.getDay() + " (" + now.format(formatter) + "): " + entry;
+
+		// CRITICAL FIX: Deduplicate consecutive similar weed messages
+		List<String> entries = player.getJournalEntries();
+		if (!entries.isEmpty()) {
+			int consecutiveWeedCount = 0;
+			String weedMessage = "Some weeds appeared in the garden.";
+
+			// Count consecutive weed messages from the end
+			for (int i = entries.size() - 1; i >= 0; i--) {
+				if (entries.get(i).contains(weedMessage)) {
+					consecutiveWeedCount++;
+				} else {
+					break;
+				}
+			}
+
+			// If we already have 3 consecutive weed messages, don't add another
+			if (entry.contains(weedMessage) && consecutiveWeedCount >= 3) {
+				return false; // Silently skip this entry
+			}
+		}
+
+		// Enforce 100 entry limit - remove oldest if needed
+		if (entries.size() >= MAX_ENTRIES) {
+			entries.remove(0); // Remove oldest entry
+		}
+
+		player.addJournalEntry(formattedEntry);
+		return true;
+	}
+
+	/**
+	 * Gets journal entries for a specific page (displayed in reverse chronological order)
+	 * FIXED: Returns entries in reverse order (newest first)
+	 */
+	public static List<String> getJournalEntries(String playerName, int page) {
+		Player1 player = loadGame(playerName);
+
+		if (player == null) {
+			return new ArrayList<>();
+		}
+
+		List<String> allEntries = player.getJournalEntries();
+		int totalEntries = allEntries.size();
+
+		if (totalEntries == 0 || page < 0) {
+			return new ArrayList<>();
+		}
+
+		// FIX: Reverse the entire list FIRST so newest entries are at index 0
+		List<String> reversedEntries = new ArrayList<>(allEntries);
+		java.util.Collections.reverse(reversedEntries);
+
+		// Now paginate from the reversed list (newest first)
+		int startIndex = page * ENTRIES_PER_PAGE;
+		int endIndex = Math.min(startIndex + ENTRIES_PER_PAGE, totalEntries);
+
+		if (startIndex >= totalEntries) {
+			return new ArrayList<>();
+		}
+
+		return reversedEntries.subList(startIndex, endIndex);
+	}
+
+	/**
+	 * Gets total number of journal pages
+	 * FIXED: Correctly calculates based on actual entry count
+	 */
+	public static int getTotalJournalPages(String playerName) {
+		Player1 player = loadGame(playerName);
+
+		if (player == null) {
+			return 0;
+		}
+
+		List<String> allEntries = player.getJournalEntries();
+		int totalEntries = allEntries.size();
+
+		// Calculate pages: 1-5 entries = 1 page, 6-10 entries = 2 pages, etc.
+		return (int) Math.ceil((double) totalEntries / ENTRIES_PER_PAGE);
+	}
+
+	public static List<String> getAllJournalEntries(String playerName) {
+		Player1 player = loadGame(playerName);
+
+		if (player == null) {
+			return new ArrayList<>();
+		}
+
+		return player.getJournalEntries();
+	}
+
+	public static boolean saveExists(String playerName) {
+		String filename = SAVE_DIRECTORY + playerName + ".txt";
+		File saveFile = new File(filename);
+		return saveFile.exists();
+	}
+
+	public static boolean resetGame(Player1 player) {
+		File directory = new File(SAVE_DIRECTORY);
+		if (!directory.exists()) {
+			directory.mkdirs();
+		}
+
+		String filename = SAVE_DIRECTORY + player.getName() + ".txt";
+		File saveFile = new File(filename);
+		if (saveFile.exists()) {
+			saveFile.delete();
+		}
+
+		return saveGame(player);
+	}
 }
