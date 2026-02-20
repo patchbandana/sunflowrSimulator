@@ -68,23 +68,23 @@ public class FlowerInstance extends Flower {
 		String stage = getGrowthStage();
 		
 		// Choose emoji based on growth stage for visual feedback
-		String emoji = "🌻"; // Default sunflower emoji
+		String emoji = "ðŸŒ»"; // Default sunflower emoji
 		
 		switch (stage) {
 			case "Seed":
-				emoji = "🌱"; // Seedling emoji for seeds
+				emoji = "ðŸŒ±"; // Seedling emoji for seeds
 				break;
 			case "Seedling":
-				emoji = "🌿"; // Young plant emoji
+				emoji = "ðŸŒ¿"; // Young plant emoji
 				break;
 			case "Bloomed":
-				emoji = "🌸"; // Blossom emoji
+				emoji = "ðŸŒ¸"; // Blossom emoji
 				break;
 			case "Matured":
-				emoji = "🌻"; // Full sunflower emoji
+				emoji = "ðŸŒ»"; // Full sunflower emoji
 				break;
 			case "Withered":
-				emoji = "🥀"; // Wilted flower emoji
+				emoji = "ðŸ¥€"; // Wilted flower emoji
 				break;
 			case "Mutated":
 				emoji = "✨"; // Sparkle emoji for mutations

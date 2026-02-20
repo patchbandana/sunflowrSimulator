@@ -16,7 +16,7 @@ public class BouquetActions {
      * @return true if bouquet was created
      */
     public static boolean handleCreateBouquet(Player1 player, Scanner scanner) {
-        System.out.println("\n💐 Create a Bouquet 💐");
+        System.out.println("\nðŸ’ Create a Bouquet ðŸ’");
         System.out.println("Bouquets must contain 3-12 flowers.");
         System.out.println("Only Bloomed, Matured, Mutated, or Withered flowers can be used.");
         
@@ -24,7 +24,7 @@ public class BouquetActions {
         List<Flower> eligibleFlowers = getEligibleFlowers(player);
         
         if (eligibleFlowers.isEmpty()) {
-            System.out.println("\n❌ You don't have any flowers that can be used in a bouquet!");
+            System.out.println("\nâŒ You don't have any flowers that can be used in a bouquet!");
             System.out.println("You need at least 3 Bloomed, Matured, Mutated, or Withered flowers.");
             System.out.println("Press Enter to continue...");
             scanner.nextLine();
@@ -32,7 +32,7 @@ public class BouquetActions {
         }
         
         if (eligibleFlowers.size() < 3) {
-            System.out.println("\n❌ You need at least 3 eligible flowers to make a bouquet!");
+            System.out.println("\nâŒ You need at least 3 eligible flowers to make a bouquet!");
             System.out.println("You have " + eligibleFlowers.size() + " eligible flower(s).");
             System.out.println("Press Enter to continue...");
             scanner.nextLine();
@@ -40,7 +40,7 @@ public class BouquetActions {
         }
         
         // Display eligible flowers
-        System.out.println("\n🌸 Eligible Flowers:");
+        System.out.println("\nðŸŒ¸ Eligible Flowers:");
         for (int i = 0; i < eligibleFlowers.size(); i++) {
             Flower flower = eligibleFlowers.get(i);
             System.out.println((i + 1) + ": " + flower.getName() + " (" + 
@@ -55,16 +55,28 @@ public class BouquetActions {
             return false;
         }
         
-        // Optional: Give custom name
-        System.out.print("\nWould you like to give this bouquet a custom name? (yes/no): ");
-        String nameChoice = scanner.nextLine().toLowerCase();
-        
+        // Check if this composition is already known
+        Bouquet tempBouquet = new Bouquet(selectedFlowers, null, player.getDay());
+        String signature = tempBouquet.getCompositionSignature();
         String customName = null;
-        if (nameChoice.equals("yes")) {
-            System.out.print("Enter bouquet name: ");
-            customName = scanner.nextLine().trim();
-            if (customName.isEmpty()) {
-                customName = null;
+        boolean isRecognized = player.hasKnownBouquetComposition(signature);
+        
+        if (isRecognized) {
+            // Automatically use the known name
+            customName = player.getKnownBouquetName(signature);
+            System.out.println("\n✨ You've made this bouquet before!");
+            System.out.println("Using saved name: \"" + customName + "\"");
+        } else {
+            // Ask if they want to name this new composition
+            System.out.print("\nWould you like to give this bouquet a custom name? (yes/no): ");
+            String nameChoice = scanner.nextLine().toLowerCase();
+            
+            if (nameChoice.equals("yes")) {
+                System.out.print("Enter bouquet name: ");
+                customName = scanner.nextLine().trim();
+                if (customName.isEmpty()) {
+                    customName = null;
+                }
             }
         }
         
@@ -80,7 +92,7 @@ public class BouquetActions {
         player.addToInventory(bouquet);
         
         // Display result
-        System.out.println("\n✅ Bouquet created successfully!");
+        System.out.println("\nâœ… Bouquet created successfully!");
         System.out.println(bouquet.getDetailedDescription());
         
         // Journal entry
@@ -91,17 +103,10 @@ public class BouquetActions {
         journalEntry += ".";
         Journal.addJournalEntry(player, journalEntry);
         
-        // Store this composition if it has a custom name
-        if (bouquet.hasCustomName()) {
-            String signature = bouquet.getCompositionSignature();
-            if (player.hasKnownBouquetComposition(signature)) {
-                System.out.println("\n✨ You've made this bouquet recipe before!");
-                System.out.println("The fairies may recognize it...");
-            } else {
-                player.addKnownBouquetComposition(signature, bouquet.getCustomName());
-                System.out.println("\n📝 Recipe saved: \"" + bouquet.getCustomName() + "\"");
-                System.out.println("You can recreate this exact bouquet in the future.");
-            }
+        // Store this composition if it's a NEW custom name
+        if (!isRecognized && bouquet.hasCustomName()) {
+            player.addKnownBouquetComposition(signature, bouquet.getCustomName());
+            System.out.println("\n📖 Recipe saved: \"" + bouquet.getCustomName() + "\"");
         }
         
         Journal.saveGame(player);
@@ -167,19 +172,19 @@ public class BouquetActions {
         
         // Validate selection
         if (selected.size() < 3) {
-            System.out.println("\n❌ You must select at least 3 flowers!");
+            System.out.println("\nâŒ You must select at least 3 flowers!");
             return null;
         }
         
         if (selected.size() > 12) {
-            System.out.println("\n❌ You can only select up to 12 flowers!");
+            System.out.println("\nâŒ You can only select up to 12 flowers!");
             return null;
         }
         
         // Show selection
         System.out.println("\nSelected flowers:");
         for (Flower flower : selected) {
-            System.out.println("  • " + flower.getName() + " (" + flower.getGrowthStage() + ")");
+            System.out.println("  â€¢ " + flower.getName() + " (" + flower.getGrowthStage() + ")");
         }
         
         System.out.print("\nConfirm selection? (yes/no): ");
@@ -196,7 +201,7 @@ public class BouquetActions {
      * Handles bouquet disassembly
      */
     public static boolean handleDisassembleBouquet(Player1 player, Scanner scanner) {
-        System.out.println("\n🌸 Disassemble a Bouquet 🌸");
+        System.out.println("\nðŸŒ¸ Disassemble a Bouquet ðŸŒ¸");
         
         // Get bouquets from inventory
         List<Bouquet> bouquets = getBouquetsFromInventory(player);
@@ -255,7 +260,7 @@ public class BouquetActions {
             player.addToInventory(flower);
         }
         
-        System.out.println("\n✅ Bouquet disassembled!");
+        System.out.println("\nâœ… Bouquet disassembled!");
         System.out.println(selectedBouquet.getFlowerCount() + " flowers returned to your inventory.");
         
         Journal.addJournalEntry(player, "Disassembled a bouquet, returning " + 

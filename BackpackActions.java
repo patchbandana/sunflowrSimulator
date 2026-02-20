@@ -15,7 +15,7 @@ public class BackpackActions {
         boolean inBackpack = true;
         
         while (inBackpack) {
-            System.out.println("\n🎒 Your Backpack 🎒");
+            System.out.println("\nðŸŽ’ Your Backpack ðŸŽ’");
             System.out.println("Current resources: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
             System.out.println();
             
@@ -24,7 +24,7 @@ public class BackpackActions {
             if (inventory.isEmpty()) {
                 System.out.println("Your backpack is empty.");
             } else {
-                System.out.println("📦 Inventory Contents:");
+                System.out.println("ðŸ“¦ Inventory Contents:");
                 displayInventoryItems(inventory);
             }
             
@@ -112,7 +112,7 @@ public class BackpackActions {
             return;
         }
         
-        System.out.println("\n🔧 Use Item");
+        System.out.println("\nðŸ”§ Use Item");
         System.out.println("Select an item to use (or 0 to cancel):");
         displayInventoryItems(inventory);
         
@@ -145,7 +145,7 @@ public class BackpackActions {
         String stage = flower.getGrowthStage();
         
         if (stage.equals("Seed")) {
-            System.out.println("\n🌱 " + flower.getName() + " Seed");
+            System.out.println("\nðŸŒ± " + flower.getName() + " Seed");
             System.out.println("What would you like to do?");
             System.out.println("1: Eat the seed (restore NRG)");
             System.out.println("2: Plant in an empty flower pot");
@@ -185,7 +185,7 @@ public class BackpackActions {
             player.setNRG(player.getNRG() + nrgRestored);
             player.removeFromInventory(seed);
             
-            System.out.println("\n✅ You ate the " + seed.getName() + " seed.");
+            System.out.println("\nâœ… You ate the " + seed.getName() + " seed.");
             System.out.println("Restored " + nrgRestored + " NRG!");
             System.out.println("Current NRG: " + player.getNRG());
             
@@ -218,14 +218,14 @@ public class BackpackActions {
         
         int difficulty = FlowerRegistry.getFlowerDifficulty(seed.getName());
         if (difficulty >= 4) {
-            System.out.println("\n❌ This flower is too difficult (4★+) to plant in a flower pot!");
+            System.out.println("\nâŒ This flower is too difficult (4â˜…+) to plant in a flower pot!");
             System.out.println("You'll need to plant it in a regular garden plot.");
             return;
         }
         
         String nameLower = seed.getName().toLowerCase();
         if (nameLower.contains("bush") || nameLower.contains("tree")) {
-            System.out.println("\n❌ Bushes and trees can't be planted in flower pots!");
+            System.out.println("\nâŒ Bushes and trees can't be planted in flower pots!");
             System.out.println("You'll need to plant it in a regular garden plot.");
             return;
         }
@@ -248,7 +248,7 @@ public class BackpackActions {
         gardenPlot selectedPot = (gardenPlot) inventory.get(potIndex);
         
         if (selectedPot.plantFlower(seed)) {
-            System.out.println("\n✅ You planted the " + seed.getName() + " seed in the flower pot!");
+            System.out.println("\nâœ… You planted the " + seed.getName() + " seed in the flower pot!");
             System.out.println("The potted plant is still in your backpack.");
             System.out.println("You can place it in your garden when you're ready.");
             
@@ -257,7 +257,7 @@ public class BackpackActions {
             Journal.addJournalEntry(player, "Planted a " + seed.getName() + 
                     " seed in a flower pot.");
         } else {
-            System.out.println("\n❌ Failed to plant the seed. This shouldn't happen!");
+            System.out.println("\nâŒ Failed to plant the seed. This shouldn't happen!");
         }
     }
     
@@ -293,7 +293,7 @@ public class BackpackActions {
             return;
         }
         
-        System.out.println("\n🔄 Rearrange Items");
+        System.out.println("\nðŸ”„ Rearrange Items");
         System.out.println("Current order:");
         displayInventoryItems(inventory);
         
@@ -321,7 +321,7 @@ public class BackpackActions {
         Object itemToSwap = inventory.remove(itemToMove - 1);
         inventory.add(newPosition - 1, itemToSwap);
         
-        System.out.println("\n✅ Items rearranged!");
+        System.out.println("\nâœ… Items rearranged!");
         System.out.println("\nNew order:");
         displayInventoryItems(inventory);
         
@@ -339,7 +339,7 @@ public class BackpackActions {
             return;
         }
         
-        System.out.println("\n🗑️ Dispose of Item");
+        System.out.println("\nðŸ—‘ï¸ Dispose of Item");
         System.out.println("⚠️ WARNING: This will permanently delete the item!");
         System.out.println();
         displayInventoryItems(inventory);
@@ -399,8 +399,8 @@ public class BackpackActions {
             
             inventory.remove(itemChoice - 1);
             
-            System.out.println("\n✅ " + itemName + " has been thrown away.");
-            System.out.println("It's gone forever. 💀");
+            System.out.println("\nâœ… " + itemName + " has been thrown away.");
+            System.out.println("It's gone forever. ðŸ’€");
             
             Journal.addJournalEntry(player, "Disposed of " + itemName + ".");
             Journal.saveGame(player);

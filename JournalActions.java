@@ -20,7 +20,7 @@ public class JournalActions {
 		while (inJournal) {
 			totalPages = Journal.getTotalJournalPages(player.getName()); 
 
-			System.out.println("\n📖 Journal Menu 📖");
+			System.out.println("\nðŸ“– Journal Menu ðŸ“–");
 			System.out.println("1. View Journal Entries");
 			System.out.println("2. Add New Entry");
 			System.out.println("3. View Dream Journal");
@@ -94,7 +94,23 @@ public class JournalActions {
 		}
 
 		while (viewing) {
-			List<String> entries = Journal.getJournalEntries(player.getName(), currentPage); 
+			// Use player object entries for immediate display
+			List<String> allEntries = player.getJournalEntries();
+			
+			// Calculate pagination
+			final int ENTRIES_PER_PAGE = 5;
+			totalPages = (int) Math.ceil((double) allEntries.size() / ENTRIES_PER_PAGE);
+			if (totalPages == 0) totalPages = 1;
+			
+			// Get entries for current page (newest first)
+			int startIdx = Math.max(0, allEntries.size() - ((currentPage + 1) * ENTRIES_PER_PAGE));
+			int endIdx = allEntries.size() - (currentPage * ENTRIES_PER_PAGE);
+			endIdx = Math.min(endIdx, allEntries.size());
+			
+			List<String> entries = new ArrayList<>();
+			for (int i = endIdx - 1; i >= startIdx; i--) {
+				entries.add(allEntries.get(i));
+			}
 
 			System.out.println("\n=== Journal Entries (Page " + (currentPage + 1) + " of " + totalPages + ") ===");
 			System.out.println("(Showing newest entries first)");
@@ -150,14 +166,14 @@ public class JournalActions {
 		boolean success = Journal.addJournalEntry(player, newEntry);
 
 		if (success) {
-			System.out.println("✅ New entry added and game saved successfully.");
+			System.out.println("âœ… New entry added and game saved successfully.");
 		} else {
-			System.out.println("❌ Failed to add entry or save game.");
+			System.out.println("âŒ Failed to add entry or save game.");
 		}
 	}
 
 	private static void handleViewDreamJournal(Player1 player, Scanner scanner) {
-		System.out.println("\n😴 Dream Journal 😴");
+		System.out.println("\nðŸ˜´ Dream Journal ðŸ˜´");
 
 		if (player.getUnlockedDreams().isEmpty()) {
 			System.out.println("Your dream journal is empty. Keep sleeping to unlock new dreams!");
@@ -202,7 +218,7 @@ public class JournalActions {
 	}
 
 	private static void handleViewTipsCollection(Player1 player, Scanner scanner) {
-		System.out.println("\n💡 Tips Collection 💡");
+		System.out.println("\nðŸ’¡ Tips Collection ðŸ’¡");
 
 		if (player.getUnlockedHints().isEmpty()) {
 			System.out.println("Your tips collection is empty. Keep sleeping past day 20 to unlock helpful tips!");
@@ -254,7 +270,7 @@ public class JournalActions {
 		String hintText = HintReader.readHintFile(hintFile);
 
 		System.out.println("\n======================================");
-		System.out.println("💡 TIP: " + hintFile); 
+		System.out.println("ðŸ’¡ TIP: " + hintFile); 
 		System.out.println("======================================");
 
 		if (hintText != null) {
@@ -276,7 +292,7 @@ public class JournalActions {
 		String dreamText = DreamReader.readDreamFile(dreamFile);
 
 		System.out.println("\n======================================");
-		System.out.println("⭐ DREAM: " + dreamFile); 
+		System.out.println("â­ DREAM: " + dreamFile); 
 		System.out.println("======================================");
 
 		if (dreamText != null) {
@@ -295,12 +311,12 @@ public class JournalActions {
 	}
 
 	private static void handleSaveGame(Player1 player) {
-		System.out.println("\n💾 Saving Game...");
+		System.out.println("\nðŸ’¾ Saving Game...");
 		boolean success = Journal.saveGame(player);
 		if (success) {
-			System.out.println("✅ Adventure saved successfully!");
+			System.out.println("âœ… Adventure saved successfully!");
 		} else {
-			System.out.println("❌ Error saving game.");
+			System.out.println("âŒ Error saving game.");
 		}
 	}
 
@@ -323,7 +339,7 @@ public class JournalActions {
 			Journal.resetGame(newPlayer);
 			Journal.addJournalEntry(newPlayer, "Started a new adventure! (New Game+)");
 
-			System.out.println("\n🔄 Game has been reset successfully!");
+			System.out.println("\nðŸ”„ Game has been reset successfully!");
 			System.out.println("Welcome to your new adventure, " + nameToKeep + "!");
 			System.out.println("It is day " + newPlayer.getDay() + ".");
 			System.out.println("You have " + newPlayer.getNRG() + " NRG and " + newPlayer.getCredits() + " credits.");

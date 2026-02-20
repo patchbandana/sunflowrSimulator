@@ -55,7 +55,7 @@ public class DreamReader {
         }
         
         try (BufferedReader reader = new BufferedReader(
-                new FileReader(DREAM_DIRECTORY + filename))) {
+                new FileReader(DREAM_DIRECTORY + filename, java.nio.charset.StandardCharsets.UTF_8))) {
             StringBuilder dream = new StringBuilder();
             String line;
             

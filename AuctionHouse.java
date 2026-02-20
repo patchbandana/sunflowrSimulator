@@ -1,14 +1,6 @@
 /* AuctionHouse.java
  * Manages bouquet auction state and bidding mechanics
- * UPDATED: Hidden multiplier system - players discover through experimentation
- * 
- * AUCTION MECHANICS:
- * - Day 1: Bouquet posted, no bids yet
- * - Days 2-6: Fairies bid, applying one random multiplier per day IF available
- * - Day 7: Royal fairy applies ALL remaining multipliers IF any exist
- * - If no multipliers available, bid increases by 1 credit per day
- * - Player can accept offer early or wait
- * - Must collect earnings before next auction
+ * UPDATED: Added save/load support, recognition bonus on day 2, hidden multiplier system
  */
 
 import java.util.ArrayList;
@@ -22,12 +14,10 @@ public class AuctionHouse {
     private List<String> appliedMultipliers;
     private double earningsWaiting;
     private boolean hasCollectedEarnings;
+    private boolean recognitionBonusApplied; // NEW: Track if 1.2x bonus applied
     
     private static final Random random = new Random();
     
-    /**
-     * Creates a new auction house (starts with no active auction)
-     */
     public AuctionHouse() {
         this.currentBouquet = null;
         this.auctionStartDay = -1;
@@ -35,47 +25,37 @@ public class AuctionHouse {
         this.appliedMultipliers = new ArrayList<>();
         this.earningsWaiting = 0;
         this.hasCollectedEarnings = true;
+        this.recognitionBonusApplied = false;
     }
     
-    /**
-     * Checks if there's an active auction
-     */
     public boolean hasActiveAuction() {
         return currentBouquet != null;
     }
     
-    /**
-     * Checks if there are uncollected earnings
-     */
     public boolean hasUncollectedEarnings() {
         return !hasCollectedEarnings && earningsWaiting > 0;
     }
     
-    /**
-     * Starts a new auction with the given bouquet
-     */
-    public boolean startAuction(Bouquet bouquet, int currentDay) {
+    public boolean startAuction(Bouquet bouquet, int currentDay, Player1 player) {
         if (hasActiveAuction()) {
-            return false; // Already have an active auction
+            return false;
         }
         
         if (hasUncollectedEarnings()) {
-            return false; // Must collect previous earnings first
+            return false;
         }
         
         this.currentBouquet = bouquet;
         this.auctionStartDay = currentDay;
-        this.currentBid = bouquet.getBaseValue(); // Start at base value
+        this.currentBid = bouquet.getBaseValue();
         this.appliedMultipliers = new ArrayList<>();
         this.earningsWaiting = 0;
         this.hasCollectedEarnings = true;
+        this.recognitionBonusApplied = false;
         
         return true;
     }
     
-    /**
-     * Gets the current auction day (1-7)
-     */
     public int getAuctionDay(int currentDay) {
         if (!hasActiveAuction()) {
             return 0;
@@ -83,9 +63,6 @@ public class AuctionHouse {
         return currentDay - auctionStartDay + 1;
     }
     
-    /**
-     * Processes daily bidding when player sleeps
-     */
     public String processDailyBid(int currentDay, Player1 player) {
         if (!hasActiveAuction()) {
             return null;
@@ -94,85 +71,79 @@ public class AuctionHouse {
         int auctionDay = getAuctionDay(currentDay);
         
         if (auctionDay == 1) {
-            return "📢 Your bouquet is now listed at the auction house!";
+            return "ðŸ“¢ Your bouquet is now listed at the auction house!";
         }
         
-        if (auctionDay >= 2 && auctionDay <= 6) {
-            // Regular fairy bids (apply one random multiplier if available)
+        // Day 2: Apply 1.2x bonus for ANY custom name
+        if (auctionDay == 2 && !recognitionBonusApplied) {
+            if (currentBouquet.hasCustomName()) {
+                // Apply 1.2x bonus for having a custom name
+                double oldBid = currentBid;
+                currentBid *= 1.2;
+                recognitionBonusApplied = true;
+                
+                return "🧚 A fairy noticed your \"" + currentBouquet.getCustomName() + "\" arrangement!\n" +
+                       "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits.";
+            }
+        }
+        
+        // Days 3-6: Apply one random multiplier per day
+        if (auctionDay >= 3 && auctionDay <= 6) {
             return applyRandomMultiplier(player);
         }
         
         if (auctionDay == 7) {
-            // Royal fairy applies ALL remaining multipliers (or +1 if none)
             return applyAllRemainingMultipliers(player);
         }
         
-        // Day 8+: auction stays at current bid
         return null;
     }
     
-    /**
-     * Applies a random multiplier to the current bid
-     * If no multipliers available, increases bid by 1
-     */
     private String applyRandomMultiplier(Player1 player) {
         List<MultiplierRule> availableMultipliers = getAvailableMultipliers();
         
         if (availableMultipliers.isEmpty()) {
-            // No multipliers available - just increase by 1
             double oldBid = currentBid;
             currentBid += 1;
-            return "🧚 A fairy examined your bouquet.\n" +
+            return "ðŸ§š A fairy examined your bouquet.\n" +
                    "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits.";
         }
         
-        // Pick random multiplier
         MultiplierRule chosen = availableMultipliers.get(random.nextInt(availableMultipliers.size()));
         appliedMultipliers.add(chosen.name);
         
         double oldBid = currentBid;
         currentBid *= chosen.multiplier;
         
-        // Generic message - doesn't reveal what was noticed or the multiplier
-        return "🧚 A fairy noticed something special about your bouquet!\n" +
+        return "ðŸ§š A fairy noticed something special about your bouquet!\n" +
                "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits!";
     }
     
-    /**
-     * Applies ALL remaining multipliers (Royal fairy on day 7)
-     * If no multipliers available, increases bid by 1
-     */
     private String applyAllRemainingMultipliers(Player1 player) {
         List<MultiplierRule> availableMultipliers = getAvailableMultipliers();
         
         if (availableMultipliers.isEmpty()) {
-            // No multipliers left - just increase by 1 and end
             double oldBid = currentBid;
             currentBid += 1;
             endAuction();
-            return "👑 The Royal Fairy examined your bouquet carefully.\n" +
+            return "ðŸ§š A fairy examined your bouquet one last time.\n" +
                    "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits.\n" +
                    "   The auction has ended. You may collect " + (int)earningsWaiting + " credits.";
         }
         
         double oldBid = currentBid;
         
-        // Apply all remaining multipliers
         for (MultiplierRule rule : availableMultipliers) {
             appliedMultipliers.add(rule.name);
             currentBid *= rule.multiplier;
         }
         
-        // Generic message - doesn't reveal how many multipliers or what they were
         endAuction();
-        return "👑 The Royal Fairy arrived and was deeply impressed by your bouquet!\n" +
-               "   Final bid: " + (int)oldBid + " → " + (int)currentBid + " credits!\n" +
+        return "ðŸ‘‘ An important fairy arrived and was deeply impressed!\n" +
+               "   Final bid: " + (int)oldBid + " â†’ " + (int)currentBid + " credits!\n" +
                "   The auction has ended. You may collect " + (int)earningsWaiting + " credits.";
     }
     
-    /**
-     * Gets all multipliers that haven't been applied yet
-     */
     private List<MultiplierRule> getAvailableMultipliers() {
         List<MultiplierRule> available = new ArrayList<>();
         
@@ -185,31 +156,22 @@ public class AuctionHouse {
         return available;
     }
     
-    /**
-     * Ends the auction and sets earnings
-     */
     private void endAuction() {
         this.earningsWaiting = currentBid;
         this.hasCollectedEarnings = false;
         this.currentBouquet = null;
     }
     
-    /**
-     * Player accepts the current bid early
-     */
     public String acceptBid() {
         if (!hasActiveAuction()) {
             return null;
         }
         
         endAuction();
-        return "✅ You accepted the current bid of " + (int)earningsWaiting + " credits!\n" +
+        return "âœ… You accepted the current bid of " + (int)earningsWaiting + " credits!\n" +
                "Visit the auction house to collect your earnings.";
     }
     
-    /**
-     * Collects earnings from completed auction
-     */
     public int collectEarnings() {
         if (!hasUncollectedEarnings()) {
             return 0;
@@ -239,12 +201,46 @@ public class AuctionHouse {
         return new ArrayList<>(appliedMultipliers);
     }
     
-    /**
-     * Gets a status summary for display
-     */
+    public int getAuctionStartDay() {
+        return auctionStartDay;
+    }
+    
+    public boolean isRecognitionBonusApplied() {
+        return recognitionBonusApplied;
+    }
+    
+    // Setters for save/load
+    public void setCurrentBouquet(Bouquet bouquet) {
+        this.currentBouquet = bouquet;
+    }
+    
+    public void setAuctionStartDay(int day) {
+        this.auctionStartDay = day;
+    }
+    
+    public void setCurrentBid(double bid) {
+        this.currentBid = bid;
+    }
+    
+    public void setAppliedMultipliers(List<String> multipliers) {
+        this.appliedMultipliers = new ArrayList<>(multipliers);
+    }
+    
+    public void setEarningsWaiting(double earnings) {
+        this.earningsWaiting = earnings;
+    }
+    
+    public void setHasCollectedEarnings(boolean collected) {
+        this.hasCollectedEarnings = collected;
+    }
+    
+    public void setRecognitionBonusApplied(boolean applied) {
+        this.recognitionBonusApplied = applied;
+    }
+    
     public String getStatusSummary(int currentDay) {
         if (hasUncollectedEarnings()) {
-            return "💰 Earnings waiting: " + (int)earningsWaiting + " credits";
+            return "ðŸ’° Earnings waiting: " + (int)earningsWaiting + " credits";
         }
         
         if (!hasActiveAuction()) {
