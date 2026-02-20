@@ -157,19 +157,27 @@ public class Journal {
 
 			// In Journal.saveGame(), add after [GARDEN_PLOTS]:
 			writer.write("[AUCTION_HOUSE]\n");
-			if (player.getAuctionHouse().hasActiveAuction()) {
-				Bouquet bouquet = player.getAuctionHouse().getCurrentBouquet();
+			AuctionHouse auctionHouse = player.getAuctionHouse();
+			writer.write("HasCollectedEarnings=" + !auctionHouse.hasUncollectedEarnings() + "\n");
+			writer.write("RecognitionBonusApplied=" + auctionHouse.isRecognitionBonusApplied() + "\n");
+			if (auctionHouse.hasActiveAuction()) {
+				Bouquet bouquet = auctionHouse.getCurrentBouquet();
 				writer.write("ActiveAuction=true\n");
-				writer.write("AuctionStartDay=" + player.getAuctionHouse().getAuctionStartDay() + "\n");
-				writer.write("CurrentBid=" + player.getAuctionHouse().getCurrentBid() + "\n");
+				writer.write("AuctionStartDay=" + auctionHouse.getAuctionStartDay() + "\n");
+				writer.write("CurrentBid=" + auctionHouse.getCurrentBid() + "\n");
 				writer.write("BouquetFlowerCount=" + bouquet.getFlowerCount() + "\n");
+				writer.write("BouquetDayCreated=" + bouquet.getDayCreated() + "\n");
 
 				// Save each flower in bouquet
 				for (int i = 0; i < bouquet.getFlowers().size(); i++) {
 					Flower f = bouquet.getFlowers().get(i);
-					writer.write("BouquetFlower=" + i + "," + f.getName() + "," + 
-							f.getGrowthStage() + "," + f.getDaysPlanted() + "," + 
-							f.getDurability() + "," + f.getCost() + "\n");
+					writer.write("BouquetFlower=" + i + "," + f.getName() + "," +
+							f.getGrowthStage() + "," + f.getDaysPlanted() + "," +
+							f.getDurability() + "," + f.getCost());
+					if (f instanceof FlowerInstance) {
+						writer.write("," + ((FlowerInstance) f).getNRGRestored());
+					}
+					writer.write("\n");
 				}
 
 				if (bouquet.hasCustomName()) {
@@ -177,13 +185,13 @@ public class Journal {
 				}
 
 				// Save applied multipliers
-				for (String mult : player.getAuctionHouse().getAppliedMultipliers()) {
+				for (String mult : auctionHouse.getAppliedMultipliers()) {
 					writer.write("AppliedMultiplier=" + mult + "\n");
 				}
 			}
 
-			if (player.getAuctionHouse().hasUncollectedEarnings()) {
-				writer.write("UncollectedEarnings=" + player.getAuctionHouse().getEarningsWaiting() + "\n");
+			if (auctionHouse.hasUncollectedEarnings()) {
+				writer.write("UncollectedEarnings=" + auctionHouse.getEarningsWaiting() + "\n");
 			}
 
 			// Save known bouquet compositions
@@ -254,6 +262,18 @@ public class Journal {
 		List<String> journalEntries = new ArrayList<>();
 		List<String> unlockedDreams = new ArrayList<>();
 		List<String> unlockedHints = new ArrayList<>();
+		List<Flower> auctionBouquetFlowers = new ArrayList<>();
+		List<String> auctionAppliedMultipliers = new ArrayList<>();
+		Map<String, String> knownBouquetCompositions = new HashMap<>();
+		Map<String, Integer> bouquetHighScores = new HashMap<>();
+		boolean hasActiveAuction = false;
+		int auctionStartDay = -1;
+		double currentBid = 0;
+		double uncollectedEarnings = 0;
+		boolean hasCollectedEarnings = true;
+		boolean recognitionBonusApplied = false;
+		String auctionBouquetName = null;
+		int auctionBouquetDayCreated = -1;
 
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8))) {
@@ -319,6 +339,47 @@ public class Journal {
 					} else if (line.startsWith("FlowerPot=empty")) {
 						gardenPlot pot = new gardenPlot(true);
 						player.addToInventory(pot);
+					}
+				} else if (section.equals("AUCTION_HOUSE")) {
+					if (line.startsWith("ActiveAuction=")) {
+						hasActiveAuction = Boolean.parseBoolean(line.substring(14));
+					} else if (line.startsWith("AuctionStartDay=")) {
+						auctionStartDay = Integer.parseInt(line.substring(16));
+					} else if (line.startsWith("CurrentBid=")) {
+						currentBid = Double.parseDouble(line.substring(11));
+					} else if (line.startsWith("BouquetName=")) {
+						auctionBouquetName = line.substring(11);
+					} else if (line.startsWith("BouquetDayCreated=")) {
+						auctionBouquetDayCreated = Integer.parseInt(line.substring(17));
+					} else if (line.startsWith("BouquetFlower=")) {
+						String[] flowerData = line.substring(13).split(",");
+						if (flowerData.length >= 6) {
+							String name = flowerData[1];
+							String growthStage = flowerData[2];
+							int daysPlanted = Integer.parseInt(flowerData[3]);
+							double durability = Double.parseDouble(flowerData[4]);
+							double cost = Double.parseDouble(flowerData[5]);
+							int nrgRestored = (flowerData.length >= 7) ? Integer.parseInt(flowerData[6]) : 1;
+							auctionBouquetFlowers.add(new FlowerInstance(
+									name, growthStage, daysPlanted, durability, nrgRestored, cost));
+						}
+					} else if (line.startsWith("AppliedMultiplier=")) {
+						auctionAppliedMultipliers.add(line.substring(18));
+					} else if (line.startsWith("UncollectedEarnings=")) {
+						uncollectedEarnings = Double.parseDouble(line.substring(20));
+						hasCollectedEarnings = false;
+					} else if (line.startsWith("HasCollectedEarnings=")) {
+						hasCollectedEarnings = Boolean.parseBoolean(line.substring(20));
+					} else if (line.startsWith("RecognitionBonusApplied=")) {
+						recognitionBonusApplied = Boolean.parseBoolean(line.substring(23));
+					}
+				} else if (section.equals("KNOWN_BOUQUETS") && line.startsWith("Composition=")) {
+					String[] parts = line.substring(12).split(",", 3);
+					if (parts.length >= 2) {
+						knownBouquetCompositions.put(parts[0], parts[1]);
+						if (parts.length == 3 && !parts[2].isEmpty()) {
+							bouquetHighScores.put(parts[0], Integer.parseInt(parts[2]));
+						}
 					}
 				} else if (section.equals("GARDEN_PLOTS")) {
 					if (line.startsWith("PlotCount=")) {
@@ -425,6 +486,34 @@ public class Journal {
 			// Restore unlocked hints
 			if (player != null && !unlockedHints.isEmpty()) {
 				player.setUnlockedHints(new HashSet<>(unlockedHints));
+			}
+
+			if (player != null) {
+				if (!knownBouquetCompositions.isEmpty()) {
+					player.setKnownBouquetCompositions(knownBouquetCompositions);
+				}
+				if (!bouquetHighScores.isEmpty()) {
+					player.setBouquetHighScores(bouquetHighScores);
+				}
+
+				AuctionHouse auctionHouse = new AuctionHouse();
+				auctionHouse.setHasCollectedEarnings(hasCollectedEarnings);
+				auctionHouse.setRecognitionBonusApplied(recognitionBonusApplied);
+				if (uncollectedEarnings > 0) {
+					auctionHouse.setEarningsWaiting(uncollectedEarnings);
+					auctionHouse.setHasCollectedEarnings(false);
+				}
+
+				if (hasActiveAuction && !auctionBouquetFlowers.isEmpty()) {
+					int dayCreated = (auctionBouquetDayCreated > 0) ? auctionBouquetDayCreated : auctionStartDay;
+					Bouquet currentBouquet = new Bouquet(auctionBouquetFlowers, auctionBouquetName, dayCreated);
+					auctionHouse.setCurrentBouquet(currentBouquet);
+					auctionHouse.setAuctionStartDay(auctionStartDay);
+					auctionHouse.setCurrentBid(currentBid);
+					auctionHouse.setAppliedMultipliers(auctionAppliedMultipliers);
+				}
+
+				player.setAuctionHouse(auctionHouse);
 			}
 
 			if (player != null) {
