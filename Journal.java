@@ -350,7 +350,7 @@ public class Journal {
 					} else if (line.startsWith("BouquetName=")) {
 						auctionBouquetName = line.substring(11);
 					} else if (line.startsWith("BouquetDayCreated=")) {
-						auctionBouquetDayCreated = Integer.parseInt(line.substring(17));
+						auctionBouquetDayCreated = Integer.parseInt(line.substring(18));
 					} else if (line.startsWith("BouquetFlower=")) {
 						String[] flowerData = line.substring(13).split(",");
 						if (flowerData.length >= 6) {
@@ -374,11 +374,25 @@ public class Journal {
 						recognitionBonusApplied = Boolean.parseBoolean(line.substring(23));
 					}
 				} else if (section.equals("KNOWN_BOUQUETS") && line.startsWith("Composition=")) {
-					String[] parts = line.substring(12).split(",", 3);
-					if (parts.length >= 2) {
-						knownBouquetCompositions.put(parts[0], parts[1]);
-						if (parts.length == 3 && !parts[2].isEmpty()) {
-							bouquetHighScores.put(parts[0], Integer.parseInt(parts[2]));
+					String compositionData = line.substring(12);
+					Integer parsedHighScore = null;
+
+					int lastComma = compositionData.lastIndexOf(',');
+					if (lastComma > 0) {
+						String maybeScore = compositionData.substring(lastComma + 1);
+						if (!maybeScore.isEmpty() && maybeScore.matches("-?\\d+")) {
+							parsedHighScore = Integer.parseInt(maybeScore);
+							compositionData = compositionData.substring(0, lastComma);
+						}
+					}
+
+					int separatorIndex = compositionData.lastIndexOf(',');
+					if (separatorIndex > 0) {
+						String signature = compositionData.substring(0, separatorIndex);
+						String knownName = compositionData.substring(separatorIndex + 1);
+						knownBouquetCompositions.put(signature, knownName);
+						if (parsedHighScore != null) {
+							bouquetHighScores.put(signature, parsedHighScore);
 						}
 					}
 				} else if (section.equals("GARDEN_PLOTS")) {
