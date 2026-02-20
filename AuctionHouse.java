@@ -71,7 +71,7 @@ public class AuctionHouse {
         int auctionDay = getAuctionDay(currentDay);
         
         if (auctionDay == 1) {
-            return "ðŸ“¢ Your bouquet is now listed at the auction house!";
+            return "📢 Your bouquet is now listed at the auction house!";
         }
         
         // Day 2: Apply 1.2x bonus for ANY custom name
@@ -105,7 +105,7 @@ public class AuctionHouse {
         if (availableMultipliers.isEmpty()) {
             double oldBid = currentBid;
             currentBid += 1;
-            return "ðŸ§š A fairy examined your bouquet.\n" +
+            return "🧚 A fairy examined your bouquet.\n" +
                    "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits.";
         }
         
@@ -115,7 +115,7 @@ public class AuctionHouse {
         double oldBid = currentBid;
         currentBid *= chosen.multiplier;
         
-        return "ðŸ§š A fairy noticed something special about your bouquet!\n" +
+        return "🧚 A fairy noticed something special about your bouquet!\n" +
                "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits!";
     }
     
@@ -126,7 +126,7 @@ public class AuctionHouse {
             double oldBid = currentBid;
             currentBid += 1;
             endAuction();
-            return "ðŸ§š A fairy examined your bouquet one last time.\n" +
+            return "🧚 A fairy examined your bouquet one last time.\n" +
                    "   Bid increased from " + (int)oldBid + " to " + (int)currentBid + " credits.\n" +
                    "   The auction has ended. You may collect " + (int)earningsWaiting + " credits.";
         }
@@ -139,8 +139,8 @@ public class AuctionHouse {
         }
         
         endAuction();
-        return "ðŸ‘‘ An important fairy arrived and was deeply impressed!\n" +
-               "   Final bid: " + (int)oldBid + " â†’ " + (int)currentBid + " credits!\n" +
+        return "👑 An important fairy arrived and was deeply impressed!\n" +
+               "   Final bid: " + (int)oldBid + " → " + (int)currentBid + " credits!\n" +
                "   The auction has ended. You may collect " + (int)earningsWaiting + " credits.";
     }
     
@@ -168,7 +168,7 @@ public class AuctionHouse {
         }
         
         endAuction();
-        return "âœ… You accepted the current bid of " + (int)earningsWaiting + " credits!\n" +
+        return "✅ You accepted the current bid of " + (int)earningsWaiting + " credits!\n" +
                "Visit the auction house to collect your earnings.";
     }
     
@@ -240,7 +240,7 @@ public class AuctionHouse {
     
     public String getStatusSummary(int currentDay) {
         if (hasUncollectedEarnings()) {
-            return "ðŸ’° Earnings waiting: " + (int)earningsWaiting + " credits";
+            return "💰 Earnings waiting: " + (int)earningsWaiting + " credits";
         }
         
         if (!hasActiveAuction()) {

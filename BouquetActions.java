@@ -16,7 +16,7 @@ public class BouquetActions {
      * @return true if bouquet was created
      */
     public static boolean handleCreateBouquet(Player1 player, Scanner scanner) {
-        System.out.println("\nðŸ’ Create a Bouquet ðŸ’");
+        System.out.println("\n💐 Create a Bouquet 💐");
         System.out.println("Bouquets must contain 3-12 flowers.");
         System.out.println("Only Bloomed, Matured, Mutated, or Withered flowers can be used.");
         
@@ -24,7 +24,7 @@ public class BouquetActions {
         List<Flower> eligibleFlowers = getEligibleFlowers(player);
         
         if (eligibleFlowers.isEmpty()) {
-            System.out.println("\nâŒ You don't have any flowers that can be used in a bouquet!");
+            System.out.println("\n❌ You don't have any flowers that can be used in a bouquet!");
             System.out.println("You need at least 3 Bloomed, Matured, Mutated, or Withered flowers.");
             System.out.println("Press Enter to continue...");
             scanner.nextLine();
@@ -32,7 +32,7 @@ public class BouquetActions {
         }
         
         if (eligibleFlowers.size() < 3) {
-            System.out.println("\nâŒ You need at least 3 eligible flowers to make a bouquet!");
+            System.out.println("\n❌ You need at least 3 eligible flowers to make a bouquet!");
             System.out.println("You have " + eligibleFlowers.size() + " eligible flower(s).");
             System.out.println("Press Enter to continue...");
             scanner.nextLine();
@@ -40,7 +40,7 @@ public class BouquetActions {
         }
         
         // Display eligible flowers
-        System.out.println("\nðŸŒ¸ Eligible Flowers:");
+        System.out.println("\n🌸 Eligible Flowers:");
         for (int i = 0; i < eligibleFlowers.size(); i++) {
             Flower flower = eligibleFlowers.get(i);
             System.out.println((i + 1) + ": " + flower.getName() + " (" + 
@@ -92,7 +92,7 @@ public class BouquetActions {
         player.addToInventory(bouquet);
         
         // Display result
-        System.out.println("\nâœ… Bouquet created successfully!");
+        System.out.println("\n✅ Bouquet created successfully!");
         System.out.println(bouquet.getDetailedDescription());
         
         // Journal entry
@@ -172,19 +172,19 @@ public class BouquetActions {
         
         // Validate selection
         if (selected.size() < 3) {
-            System.out.println("\nâŒ You must select at least 3 flowers!");
+            System.out.println("\n❌ You must select at least 3 flowers!");
             return null;
         }
         
         if (selected.size() > 12) {
-            System.out.println("\nâŒ You can only select up to 12 flowers!");
+            System.out.println("\n❌ You can only select up to 12 flowers!");
             return null;
         }
         
         // Show selection
         System.out.println("\nSelected flowers:");
         for (Flower flower : selected) {
-            System.out.println("  â€¢ " + flower.getName() + " (" + flower.getGrowthStage() + ")");
+            System.out.println("  • " + flower.getName() + " (" + flower.getGrowthStage() + ")");
         }
         
         System.out.print("\nConfirm selection? (yes/no): ");
@@ -201,7 +201,7 @@ public class BouquetActions {
      * Handles bouquet disassembly
      */
     public static boolean handleDisassembleBouquet(Player1 player, Scanner scanner) {
-        System.out.println("\nðŸŒ¸ Disassemble a Bouquet ðŸŒ¸");
+        System.out.println("\n🌸 Disassemble a Bouquet 🌸");
         
         // Get bouquets from inventory
         List<Bouquet> bouquets = getBouquetsFromInventory(player);
@@ -260,7 +260,7 @@ public class BouquetActions {
             player.addToInventory(flower);
         }
         
-        System.out.println("\nâœ… Bouquet disassembled!");
+        System.out.println("\n✅ Bouquet disassembled!");
         System.out.println(selectedBouquet.getFlowerCount() + " flowers returned to your inventory.");
         
         Journal.addJournalEntry(player, "Disassembled a bouquet, returning " + 
