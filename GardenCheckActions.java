@@ -14,7 +14,7 @@ public class GardenCheckActions {
      * @param scanner Scanner for user input
      */
     public static void handleGardenCheck(Player1 player, Scanner scanner) {
-        System.out.println("\n🌱 Checking your garden... 🌱");
+        System.out.println("\nðŸŒ± Checking your garden... ðŸŒ±");
 
         List<gardenPlot> plots = player.getGardenPlots();
         if (plots.isEmpty()) {
@@ -124,17 +124,17 @@ public class GardenCheckActions {
         int nrgCost = unfertilizedCount; // 1 NRG per plot (50% discount)
         boolean willUpgradeSoil = player.getCompostWitheredCount() >= 10;
 
-        System.out.println("\n♻️ Fertilize All (Compost Bin) ♻️");
-        System.out.println("  • Plots to fertilize: " + unfertilizedCount);
-        System.out.println("  • NRG cost: " + nrgCost + " (50% discount from compost bin!)");
+        System.out.println("\nâ™»ï¸ Fertilize All (Compost Bin) â™»ï¸");
+        System.out.println("  â€¢ Plots to fertilize: " + unfertilizedCount);
+        System.out.println("  â€¢ NRG cost: " + nrgCost);
 
         if (willUpgradeSoil) {
-            System.out.println("  • ✨ BONUS: Will upgrade soil quality in all plots!");
-            System.out.println("  • (Consumes 10 composted withered flowers)");
+            System.out.println("  â€¢ ✨ BONUS: Will upgrade soil quality in all plots!");
+            
         }
 
         if (player.getNRG() < nrgCost) {
-            System.out.println("\n❌ You don't have enough energy! Need " + nrgCost + " NRG, have " + player.getNRG());
+            System.out.println("\nâŒ You don't have enough energy! Need " + nrgCost + " NRG, have " + player.getNRG());
             System.out.println("Press Enter to continue...");
             scanner.nextLine();
             return;
@@ -164,7 +164,7 @@ public class GardenCheckActions {
                     if (upgraded) {
                         soilUpgradeCount++;
                         String afterSoil = plot.getSoilQuality();
-                        System.out.println("  ✨ Plot soil upgraded: " + beforeSoil + " → " + afterSoil);
+                        System.out.println("  ✨ Plot soil upgraded: " + beforeSoil + " â†’ " + afterSoil);
                     }
                 }
             }
@@ -178,7 +178,7 @@ public class GardenCheckActions {
             player.setCompostWitheredCount(player.getCompostWitheredCount() - 10);
         }
 
-        System.out.println("\n✅ Fertilized " + fertilizedCount + " plots!");
+        System.out.println("\nâœ… Fertilized " + fertilizedCount + " plots!");
 
         if (soilUpgradeCount > 0) {
             System.out.println("✨ Upgraded soil quality in " + soilUpgradeCount + " plots!");
@@ -191,7 +191,7 @@ public class GardenCheckActions {
         System.out.println("Remaining NRG: " + player.getNRG());
 
         if (player.getCompostWitheredCount() > 0) {
-            System.out.println("\n♻️ Withered flowers remaining in compost: " + player.getCompostWitheredCount() + "/10");
+            System.out.println("\nâ™»ï¸ Withered flowers remaining in compost: " + player.getCompostWitheredCount() + "/10");
         }
 
         Journal.saveGame(player);
@@ -243,13 +243,13 @@ public class GardenCheckActions {
                 
                 if (player.hasSprinklerSystem() && !selectedPlot.isFlowerPot()) {
                     nrgCost = 0; // Free for regular plots with sprinkler
-                    System.out.println("💧 You watered the " + 
+                    System.out.println("ðŸ’§ You watered the " + 
                             selectedPlot.getPlantedFlower().getName() + " using the sprinkler system (0 NRG).");
                 } else {
                     System.out.println("You watered the " + 
                             selectedPlot.getPlantedFlower().getName() + ".");
                     if (selectedPlot.isFlowerPot()) {
-                        System.out.println("💡 Good! Flower pot plants need daily watering to avoid durability loss.");
+                        System.out.println("ðŸ’¡ Good! Flower pot plants need daily watering to avoid durability loss.");
                     }
                 }
                 
@@ -306,7 +306,7 @@ public class GardenCheckActions {
                 System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
                 
                 if (player.hasCompostBin()) {
-                    System.out.println("💡 Tip: Use the compost bin to fertilize all plots at once for 1 NRG each!");
+                    System.out.println("ðŸ’¡ Tip: Use the compost bin to fertilize all plots at once for 1 NRG each!");
                 }
                 
                 Journal.addJournalEntry(player, "Fertilized a " + 
@@ -379,7 +379,7 @@ public class GardenCheckActions {
                 player.getGardenPlots().remove(selectedPlot);
                 player.addToInventory(selectedPlot);
                 
-                System.out.println("✅ Empty flower pot added to your inventory!");
+                System.out.println("âœ… Empty flower pot added to your inventory!");
                 player.setNRG(player.getNRG() - 1);
                 System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
                 Journal.addJournalEntry(player, "Picked up an empty flower pot.");
@@ -406,7 +406,7 @@ public class GardenCheckActions {
             // Add entire pot (with plant) to inventory
             player.addToInventory(selectedPlot);
             
-            System.out.println("✅ You picked up the flower pot with " + plant.getName() + 
+            System.out.println("âœ… You picked up the flower pot with " + plant.getName() + 
                     " (" + plant.getGrowthStage() + ")!");
             System.out.println("The entire pot has been added to your inventory.");
             

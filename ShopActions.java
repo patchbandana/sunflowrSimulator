@@ -105,10 +105,10 @@ public class ShopActions {
                 // Build difficulty stars
                 StringBuilder stars = new StringBuilder();
                 for (int j = 0; j < difficulty; j++) {
-                    stars.append("★");
+                    stars.append("â˜…");
                 }
                 for (int j = difficulty; j < 5; j++) {
-                    stars.append("☆");
+                    stars.append("â˜†");
                 }
 
 				System.out.printf("%d: %s Seed %s - %d credits\n", 
@@ -167,7 +167,7 @@ public class ShopActions {
 				
 				// Check if player can afford it
 				if (player.getCredits() < totalCost) {
-					System.out.println("\n❌ You don't have enough credits! Need " + (int)totalCost + ", have " + (int)player.getCredits());
+					System.out.println("\nâŒ You don't have enough credits! Need " + (int)totalCost + ", have " + (int)player.getCredits());
 					continue;
 				}
 				
@@ -190,7 +190,7 @@ public class ShopActions {
 					}
 				}
 				
-				System.out.println("\n✅ Purchase successful! Bought " + quantity + "x " + flowerName + " seed(s).");
+				System.out.println("\nâœ… Purchase successful! Bought " + quantity + "x " + flowerName + " seed(s).");
 				System.out.println("Credits remaining: " + (int)player.getCredits());
 				
 				// Journal entry
@@ -278,7 +278,7 @@ public class ShopActions {
 					inventory.remove(inventoryIndex);
 					player.setCredits(player.getCredits() + sellPrice);
 					
-					System.out.println("✅ Sold! You now have " + (int)player.getCredits() + " credits.");
+					System.out.println("âœ… Sold! You now have " + (int)player.getCredits() + " credits.");
 					
 					Journal.addJournalEntry(player, "Sold " + getItemDescription(itemToSell) + 
 							" for " + sellPrice + " credits.");
@@ -369,7 +369,7 @@ public class ShopActions {
 	private static String getItemDescription(Object item) {
 		if (item instanceof Bouquet) {
 			Bouquet bouquet = (Bouquet) item;
-			return "💐 " + bouquet.getDisplayName();
+			return "ðŸ’ " + bouquet.getDisplayName();
 		}
 		
 		if (item instanceof gardenPlot) {
@@ -397,13 +397,13 @@ public class ShopActions {
 	 */
 	private static String getFlowerEmoji(String stage) {
 		switch (stage) {
-			case "Seed": return "🌱";
-			case "Seedling": return "🌿";
-			case "Bloomed": return "🌸";
-			case "Matured": return "🌻";
-			case "Withered": return "🥀";
+			case "Seed": return "ðŸŒ±";
+			case "Seedling": return "ðŸŒ¿";
+			case "Bloomed": return "ðŸŒ¸";
+			case "Matured": return "ðŸŒ»";
+			case "Withered": return "ðŸ¥€";
 			case "Mutated": return "✨";
-			default: return "🌼";
+			default: return "ðŸŒ¼";
 		}
 	}
 }

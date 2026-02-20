@@ -41,13 +41,7 @@ public class CompostActions {
 				addWitheredFlower(player, scanner);
 				break;
 
-			case "3": // View Status
-				viewCompostStatus(player);
-				System.out.println("\nPress Enter to continue...");
-				scanner.nextLine();
-				break;
-
-			case "4": // Return
+			case "3": // Return
 				inCompostMenu = false;
 				break;
 
@@ -62,19 +56,18 @@ public class CompostActions {
 	 * @param player The player
 	 */
 	private static void displayCompostMenu(Player1 player) {
-		System.out.println("\n♻️ Compost Bin ♻️");
+		System.out.println("\n===== Compost Bin =====");
 		System.out.println("Current resources: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
 		System.out.println("Withered flowers composting: " + player.getCompostWitheredCount() + "/10");
 
 		if (player.getCompostWitheredCount() >= 10) {
-			System.out.println("✨ Compost is ready! Next fertilize all will upgrade soil quality!");
+			System.out.println("[*] Compost is ready! Next fertilize all will upgrade soil quality!");
 		}
 
 		System.out.println("\nWhat would you like to do?");
 		System.out.println("1: Fertilize All Plots (1 NRG per plot)");
-		System.out.println("2: Add Withered Flower to Compost");
-		System.out.println("3: View Compost Status");
-		System.out.println("4: Return to Main Menu");
+		System.out.println("2: Add Withered Flower from Inventory");
+		System.out.println("3: Return to Build/Check Menus");
 	}
 
 	/**
@@ -101,16 +94,16 @@ public class CompostActions {
 		boolean willUpgradeSoil = player.getCompostWitheredCount() >= 10;
 
 		System.out.println("\nFertilize All Summary:");
-		System.out.println("  • Plots to fertilize: " + unfertilizedCount);
-		System.out.println("  • NRG cost: " + nrgCost + " (50% discount from compost bin!)");
+		System.out.println("  - Plots to fertilize: " + unfertilizedCount);
+		System.out.println("  - NRG cost: " + nrgCost + " (50% discount from compost bin!)");
 
 		if (willUpgradeSoil) {
-			System.out.println("  • ✨ BONUS: Will upgrade soil quality in all plots!");
-			System.out.println("  • (Consumes 10 composted withered flowers)");
+			System.out.println("  - [*] BONUS: Will upgrade soil quality in all plots!");
+			System.out.println("  - (Consumes 10 composted withered flowers)");
 		}
 
 		if (player.getNRG() < nrgCost) {
-			System.out.println("\n❌ You don't have enough energy! Need " + nrgCost + " NRG, have " + player.getNRG());
+			System.out.println("\n[!] You don't have enough energy! Need " + nrgCost + " NRG, have " + player.getNRG());
 			System.out.println("Press Enter to continue...");
 			scanner.nextLine();
 			return;
@@ -140,7 +133,7 @@ public class CompostActions {
 					if (upgraded) {
 						soilUpgradeCount++;
 						String afterSoil = plot.getSoilQuality();
-						System.out.println("  ✨ Plot soil upgraded: " + beforeSoil + " → " + afterSoil);
+						System.out.println("  [*] Plot soil upgraded: " + beforeSoil + " -> " + afterSoil);
 					}
 				}
 			}
@@ -154,10 +147,10 @@ public class CompostActions {
 			player.setCompostWitheredCount(player.getCompostWitheredCount() - 10);
 		}
 
-		System.out.println("\n✅ Fertilized " + fertilizedCount + " plots!");
+		System.out.println("\n[OK] Fertilized " + fertilizedCount + " plots!");
 
 		if (soilUpgradeCount > 0) {
-			System.out.println("✨ Upgraded soil quality in " + soilUpgradeCount + " plots!");
+			System.out.println("[*] Upgraded soil quality in " + soilUpgradeCount + " plots!");
 			Journal.addJournalEntry(player, "Used compost bin to fertilize all plants and upgrade " + 
 					soilUpgradeCount + " plots' soil quality.");
 		} else {
@@ -167,7 +160,7 @@ public class CompostActions {
 		System.out.println("Remaining NRG: " + player.getNRG());
 
 		if (player.getCompostWitheredCount() > 0) {
-			System.out.println("\n♻️ Withered flowers remaining in compost: " + player.getCompostWitheredCount() + "/10");
+			System.out.println("\n[Compost] Withered flowers remaining in compost: " + player.getCompostWitheredCount() + "/10");
 		}
 
 		Journal.saveGame(player);
@@ -226,14 +219,14 @@ public class CompostActions {
 			return;
 		}
 
-		System.out.println("\n🥀 Withered Flowers in Inventory:");
+		System.out.println("\n[Withered] Withered Flowers in Inventory:");
 		for (int i = 0; i < witheredFlowers.size(); i++) {
 			Flower flower = witheredFlowers.get(i);
 			System.out.println((i + 1) + ": " + flower.getName() + " (Withered)");
 		}
 
 		System.out.println("\nCurrent compost: " + player.getCompostWitheredCount() + "/10");
-		System.out.println("💡 Tip: 10 withered flowers enable soil upgrades on next fertilize all!");
+		System.out.println("[Tip] 10 withered flowers enable soil upgrades on next fertilize all!");
 
 		System.out.print("\nWhich flower would you like to compost? (1-" + witheredFlowers.size() + 
 				", or 0 to cancel): ");
@@ -262,11 +255,11 @@ public class CompostActions {
 		player.removeFromInventory(selectedFlower);
 		player.setCompostWitheredCount(player.getCompostWitheredCount() + 1);
 
-		System.out.println("\n✅ Added " + selectedFlower.getName() + " to the compost bin!");
+		System.out.println("\n[OK] Added " + selectedFlower.getName() + " to the compost bin!");
 		System.out.println("Compost progress: " + player.getCompostWitheredCount() + "/10");
 
 		if (player.getCompostWitheredCount() >= 10) {
-			System.out.println("✨ You have enough compost! Next fertilize all will upgrade soil quality!");
+			System.out.println("[*] You have enough compost! Next fertilize all will upgrade soil quality!");
 		}
 
 		Journal.addJournalEntry(player, "Added a withered " + selectedFlower.getName() + " to the compost bin.");
@@ -278,25 +271,25 @@ public class CompostActions {
 	 * @param player The player
 	 */
 	private static void viewCompostStatus(Player1 player) {
-		System.out.println("\n♻️ Compost Bin Status ♻️");
-		System.out.println("═══════════════════════════════");
+		System.out.println("\n===== Compost Bin Status =====");
+		System.out.println("=========================================");
 		System.out.println("Withered flowers composting: " + player.getCompostWitheredCount() + "/10");
 
 		if (player.getCompostWitheredCount() >= 10) {
-			System.out.println("Status: ✨ READY - Next fertilize all will upgrade soil!");
+			System.out.println("Status: [*] READY - Next fertilize all will upgrade soil!");
 		} else {
 			int needed = 10 - player.getCompostWitheredCount();
-			System.out.println("Status: 🕐 Composting - Need " + needed + " more withered flowers");
+			System.out.println("Status: [~] Composting - Need " + needed + " more withered flowers");
 		}
 
 		System.out.println("\nBenefits:");
-		System.out.println("  • Fertilize all plots for 1 NRG each (50% discount)");
-		System.out.println("  • 10 withered flowers = soil quality upgrade bonus");
-		System.out.println("  • Upgrades all plots: Bad→Average, Average→Good, etc.");
+		System.out.println("  - Fertilize all plots for 1 NRG each (50% discount)");
+		System.out.println("  - 10 withered flowers = soil quality upgrade bonus");
+		System.out.println("  - Upgrades all plots: Bad->Average, Average->Good, etc.");
 
 		System.out.println("\nHow to get withered flowers:");
-		System.out.println("  • Harvest withered plants from your garden");
-		System.out.println("  • Trim withered plants (also harvests them)");
-		System.out.println("  • Plants wither from neglect or reaching end of lifecycle");
+		System.out.println("  - Harvest withered plants from your garden");
+		System.out.println("  - Trim withered plants (also harvests them)");
+		System.out.println("  - Plants wither from neglect or reaching end of lifecycle");
 	}
 }

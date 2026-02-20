@@ -50,9 +50,9 @@ public class GardenActions {
         if (player.hasSprinklerSystem()) {
             // Only flower pots cost NRG with sprinkler system
             nrgCost = dryFlowerPots;
-            System.out.println("💧 Watering garden with sprinkler system...");
+            System.out.println("[Sprinkler] Watering garden with sprinkler system...");
             if (dryFlowerPots > 0) {
-                System.out.println("(Flower pots still require manual watering: " + dryFlowerPots + " × 1 NRG)");
+                System.out.println("(Flower pots still require manual watering: " + dryFlowerPots + " x 1 NRG)");
             }
         } else {
             // Without sprinkler, all plots cost NRG
@@ -66,7 +66,7 @@ public class GardenActions {
         
         // Check if player has enough NRG
         if (player.getNRG() < nrgCost) {
-            System.out.println("❌ You don't have enough energy to water everything!");
+            System.out.println("[X] You don't have enough energy to water everything!");
             System.out.println("Need " + nrgCost + " NRG, have " + player.getNRG());
             return false;
         }
@@ -83,7 +83,7 @@ public class GardenActions {
         player.setNRG(player.getNRG() - nrgCost);
         
         if (waterCount > 0) {
-            System.out.println("✅ You watered " + waterCount + " plants.");
+            System.out.println("[OK] You watered " + waterCount + " plants.");
             if (player.hasSprinklerSystem() && dryRegularPlots > 0) {
                 System.out.println("   " + dryRegularPlots + " garden plots watered automatically (0 NRG)");
             }
@@ -146,13 +146,13 @@ public class GardenActions {
         }
         
         if (weedCount > 0) {
-            System.out.println("✅ You weeded " + weedCount + " garden plots.");
+            System.out.println("[OK] You weeded " + weedCount + " garden plots.");
             System.out.println("Remaining NRG: " + player.getNRG());
             
             // Activate mulcher effect if installed
             if (player.hasMulcher()) {
                 player.activateMulcherEffect();
-                System.out.println("🔧 Mulcher activated! Weeds will grow at 0.25x speed for 7 days.");
+                System.out.println("[Mulcher] Mulcher activated! Weeds will grow at 0.25x speed for 7 days.");
             }
             
             Journal.addJournalEntry(player, "Spent time weeding " + weedCount + " garden plots.");

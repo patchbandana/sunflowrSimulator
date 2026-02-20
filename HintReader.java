@@ -55,7 +55,7 @@ public class HintReader {
         }
         
         try (BufferedReader reader = new BufferedReader(
-                new FileReader(HINT_DIRECTORY + filename))) {
+                new FileReader(HINT_DIRECTORY + filename, java.nio.charset.StandardCharsets.UTF_8))) {
             StringBuilder hint = new StringBuilder();
             String line;
             

@@ -65,7 +65,7 @@ public class FlowerRegistry {
             return; // Already loaded
         }
         
-        try (BufferedReader reader = new BufferedReader(new FileReader(FLOWER_DATA_FILE))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(FLOWER_DATA_FILE, java.nio.charset.StandardCharsets.UTF_8))) {
             String line;
             boolean firstLine = true;
             
@@ -84,10 +84,10 @@ public class FlowerRegistry {
             }
             
             isLoaded = true;
-            System.out.println("✅ Loaded " + flowerDatabase.size() + " flower types from database.");
+            System.out.println("âœ… Loaded " + flowerDatabase.size() + " flower types from database.");
             
         } catch (IOException e) {
-            System.err.println("❌ Error loading flower data: " + e.getMessage());
+            System.err.println("âŒ Error loading flower data: " + e.getMessage());
             System.err.println("Make sure " + FLOWER_DATA_FILE + " is in the same directory as the game.");
         }
     }
@@ -265,13 +265,13 @@ public class FlowerRegistry {
         }
         
         StringBuilder info = new StringBuilder();
-        info.append("🌸 ").append(data.name).append(" (").append(data.species).append(")\n");
+        info.append("ðŸŒ¸ ").append(data.name).append(" (").append(data.species).append(")\n");
         info.append("Difficulty: ");
         for (int i = 0; i < data.difficulty; i++) {
-            info.append("★");
+            info.append("â˜…");
         }
         for (int i = data.difficulty; i < 5; i++) {
-            info.append("☆");
+            info.append("â˜†");
         }
         info.append("\n");
         info.append("Seed Cost: ").append(data.seedCost).append(" credits\n");

@@ -227,7 +227,7 @@ public class Journal {
 
 			return true;
 		} catch (IOException e) {
-			System.out.println("âŒ Error saving game: " + e.getMessage());
+			System.out.println("[X] Error saving game: " + e.getMessage());
 			return false;
 		}
 	}
@@ -245,76 +245,58 @@ public class Journal {
 			return null;
 		}
 
-		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-			Player1 player = null;
-			String section = "";
-			String line;
-			List<String> journalEntries = new ArrayList<>();
-			Set<String> unlockedDreams = new HashSet<>();
-			Set<String> unlockedHints = new HashSet<>();
+		Player1 player = null;
+		String section = "";
+		Map<Integer, PlotData> plotDataMap = new HashMap<>();
+		int expectedPlotCount = 0;
+		List<String> journalEntries = new ArrayList<>();
+		List<String> unlockedDreams = new ArrayList<>();
+		List<String> unlockedHints = new ArrayList<>();
 
-			int expectedPlotCount = 0;
-			Map<Integer, PlotData> plotDataMap = new HashMap<>();
+		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+			String line;
 
 			while ((line = reader.readLine()) != null) {
-				// Section headers
-				if (line.equals("[PLAYER]")) {
-					section = "PLAYER";
-					continue;
-				} else if (line.equals("[UNLOCKED_DREAMS]")) {
-					section = "UNLOCKED_DREAMS";
-					continue;
-				} else if (line.equals("[UNLOCKED_HINTS]")) {
-					section = "UNLOCKED_HINTS";
-					continue;
-				} else if (line.equals("[INVENTORY]")) {
-					section = "INVENTORY";
-					continue;
-				} else if (line.equals("[GARDEN_PLOTS]")) {
-					section = "GARDEN_PLOTS";
-					continue;
-				} else if (line.equals("[JOURNAL_ENTRIES]")) {
-					section = "JOURNAL_ENTRIES";
+				line = line.trim();
+
+				if (line.isEmpty()) continue;
+
+				if (line.startsWith("[") && line.endsWith("]")) {
+					section = line.substring(1, line.length() - 1);
 					continue;
 				}
 
-				// Process data
 				if (section.equals("PLAYER")) {
 					if (line.startsWith("Name=")) {
 						String name = line.substring(5);
 						player = new Player1(name);
-					} else if (line.startsWith("NRG=")) {
-						player.setNRG(Integer.parseInt(line.substring(4)));
-					} else if (line.startsWith("Credits=")) {
-						player.setCredits(Integer.parseInt(line.substring(8)));
-					} else if (line.startsWith("Day=")) {
-						int targetDay = Integer.parseInt(line.substring(4));
-						while (player.getDay() < targetDay) {
-							player.advanceDay();
+					} else if (player != null) {
+						if (line.startsWith("NRG=")) {
+							player.setNRG(Integer.parseInt(line.substring(4)));
+						} else if (line.startsWith("Credits=")) {
+							player.setCredits(Double.parseDouble(line.substring(8)));
+						} else if (line.startsWith("Day=")) {
+							player.setDay(Integer.parseInt(line.substring(4)));
+						} else if (line.startsWith("FlowerPotsCrafted=")) {
+							player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
+						} else if (line.startsWith("HasBuiltExtraPlot=")) {
+							player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
+						} else if (line.startsWith("HasCompostBin=")) {
+							player.setHasCompostBin(Boolean.parseBoolean(line.substring(14)));
+						} else if (line.startsWith("CompostWitheredCount=")) {
+							player.setCompostWitheredCount(Integer.parseInt(line.substring(21)));
+						} else if (line.startsWith("HasMulcher=")) {
+							player.setHasMulcher(Boolean.parseBoolean(line.substring(11)));
+						} else if (line.startsWith("MulcherDaysRemaining=")) {
+							player.setMulcherDaysRemaining(Integer.parseInt(line.substring(21)));
+						} else if (line.startsWith("HasSprinklerSystem=")) {
+							player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
 						}
-					} else if (line.startsWith("FlowerPotsCrafted=")) {
-						player.setFlowerPotsCrafted(Integer.parseInt(line.substring(18)));
-					} else if (line.startsWith("HasBuiltExtraPlot=")) {
-						player.setHasBuiltExtraPlot(Boolean.parseBoolean(line.substring(18)));
-					} else if (line.startsWith("HasCompostBin=")) {
-						player.setHasCompostBin(Boolean.parseBoolean(line.substring(14)));
-					} else if (line.startsWith("CompostWitheredCount=")) {
-						player.setCompostWitheredCount(Integer.parseInt(line.substring(21)));
-					} else if (line.startsWith("HasMulcher=")) {
-						player.setHasMulcher(Boolean.parseBoolean(line.substring(11)));
-					} else if (line.startsWith("MulcherDaysRemaining=")) {
-						player.setMulcherDaysRemaining(Integer.parseInt(line.substring(21)));
-					} else if (line.startsWith("HasSprinklerSystem=")) {
-						player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
 					}
-				} else if (section.equals("UNLOCKED_DREAMS")) {
-					if (line.startsWith("Dream=")) {
-						unlockedDreams.add(line.substring(6));
-					}
-				} else if (section.equals("UNLOCKED_HINTS")) {
-					if (line.startsWith("Hint=")) {
-						unlockedHints.add(line.substring(5));
-					}
+				} else if (section.equals("UNLOCKED_DREAMS") && line.startsWith("Dream=")) {
+					unlockedDreams.add(line.substring(6));
+				} else if (section.equals("UNLOCKED_HINTS") && line.startsWith("Hint=")) {
+					unlockedHints.add(line.substring(5));
 				} else if (section.equals("INVENTORY") && player != null) {
 					if (line.startsWith("Flower=")) {
 						String[] flowerData = line.substring(7).split(",");
@@ -328,13 +310,14 @@ public class Journal {
 
 							FlowerInstance flower = new FlowerInstance(
 									name, growthStage, daysPlanted, durability, nrgRestored, cost);
+
 							player.addToInventory(flower);
 						}
-					} else if (line.startsWith("FlowerPot=")) {
+					} else if (line.startsWith("FlowerPot=empty")) {
 						gardenPlot pot = new gardenPlot(true);
 						player.addToInventory(pot);
 					}
-				} else if (section.equals("GARDEN_PLOTS") && player != null) {
+				} else if (section.equals("GARDEN_PLOTS")) {
 					if (line.startsWith("PlotCount=")) {
 						expectedPlotCount = Integer.parseInt(line.substring(10));
 					} else if (line.startsWith("Plot=")) {
@@ -442,12 +425,12 @@ public class Journal {
 			}
 
 			if (player != null) {
-				//System.out.println("âœ… Story loaded successfully!");
+				//System.out.println("[OK] Story loaded successfully!");
 			}
 
 			return player;
 		} catch (IOException | NumberFormatException e) {
-			System.out.println("âŒ Error loading game: " + e.getMessage());
+			System.out.println("[X] Error loading game: " + e.getMessage());
 			return null;
 		}
 	}

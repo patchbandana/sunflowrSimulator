@@ -177,7 +177,7 @@ public class PlantingActions {
         player.removeFromInventory(selectedPot);
         player.addFlowerPotToGarden(selectedPot);
         
-        System.out.println("\n✅ You placed the flower pot with " + plant.getName() + 
+        System.out.println("\nâœ… You placed the flower pot with " + plant.getName() + 
                 " (" + plant.getGrowthStage() + ") in your garden!");
         
         Journal.addJournalEntry(player, "Placed an occupied flower pot with " + plant.getName() + " in the garden.");
@@ -190,10 +190,10 @@ public class PlantingActions {
      * @param gardenPlots List of garden plots to display
      */
     private static void displayGardenPlots(List<gardenPlot> gardenPlots) {
-        System.out.println("\n🌱 Your Garden Plots 🌱");
+        System.out.println("\nðŸŒ± Your Garden Plots ðŸŒ±");
         for (int i = 0; i < gardenPlots.size(); i++) {
             gardenPlot plot = gardenPlots.get(i);
-            String plotType = plot.isFlowerPot() ? "[🪴 Flower Pot]" : "[📦 Garden Plot]";
+            String plotType = plot.isFlowerPot() ? "[🪴 Flower Pot]" : "[ðŸ“¦ Garden Plot]";
             System.out.println("Plot #" + (i+1) + " " + plotType + ": " + 
                     (plot.isOccupied() ? 
                             "[Occupied - " + plot.getPlantedFlower().getName() + " (" + 
@@ -212,7 +212,7 @@ public class PlantingActions {
         gardenPlot selectedPlot = availableFlowerPots.get(0); // Get first flower pot
         player.removeFromInventory(selectedPlot); // Remove from inventory
         player.addFlowerPotToGarden(selectedPlot); // Add to garden
-        System.out.println("✅ You placed a flower pot in your garden!");
+        System.out.println("âœ… You placed a flower pot in your garden!");
         return selectedPlot;
     }
     
@@ -315,10 +315,10 @@ public class PlantingActions {
         // Build difficulty stars
         StringBuilder stars = new StringBuilder();
         for (int j = 0; j < difficulty; j++) {
-            stars.append("★");
+            stars.append("â˜…");
         }
         for (int j = difficulty; j < 5; j++) {
-            stars.append("☆");
+            stars.append("â˜†");
         }
 
         System.out.print(index + ": " + seed.getName() + " " + stars + " - Value: " + seed.getCost());
@@ -326,16 +326,16 @@ public class PlantingActions {
         // Check soil quality requirements
         if (selectedPlot != null && !selectedPlot.hasSufficientSoilQuality(seed)) {
             String requiredSoil = getRequiredSoilQuality(difficulty);
-            System.out.print(" [❌ Needs " + requiredSoil + " soil, have " + selectedPlot.getSoilQuality() + "]");
+            System.out.print(" [âŒ Needs " + requiredSoil + " soil, have " + selectedPlot.getSoilQuality() + "]");
         }
         
         // Show if seed can't be planted in flower pot
         if (selectedPlot != null && selectedPlot.isFlowerPot() && !selectedPlot.canPlantInFlowerPot(seed)) {
             if (difficulty >= 4) {
-                System.out.print(" [❌ Too difficult for flower pot]");
+                System.out.print(" [âŒ Too difficult for flower pot]");
             } else if (species != null && (species.toLowerCase().contains("bush") || 
                                           species.toLowerCase().contains("tree"))) {
-                System.out.print(" [❌ Bush/Tree - can't use flower pot]");
+                System.out.print(" [âŒ Bush/Tree - can't use flower pot]");
             }
         }
         System.out.println();
@@ -366,20 +366,20 @@ public class PlantingActions {
         
         // Check soil quality first
         if (!selectedPlot.hasSufficientSoilQuality(selectedSeed)) {
-            System.out.println("\n❌ The soil quality is not good enough for this flower!");
+            System.out.println("\nâŒ The soil quality is not good enough for this flower!");
             String requiredSoil = getRequiredSoilQuality(difficulty);
             System.out.println("   Required: " + requiredSoil);
             System.out.println("   Current: " + selectedPlot.getSoilQuality());
-            System.out.println("   💡 Tip: Fertilize plots daily for a small chance to upgrade soil quality!");
+            System.out.println("   ðŸ’¡ Tip: Fertilize plots daily for a small chance to upgrade soil quality!");
             return false;
         }
         
         if (selectedPlot.isFlowerPot() && !selectedPlot.canPlantInFlowerPot(selectedSeed)) {
-            System.out.println("\n❌ This flower can't be planted in a flower pot!");
+            System.out.println("\nâŒ This flower can't be planted in a flower pot!");
             String species = FlowerRegistry.getFlowerInfo(selectedSeed.getName());
 
             if (difficulty >= 4) {
-                System.out.println("   Reason: Too difficult (4★+ flowers need regular garden plots)");
+                System.out.println("   Reason: Too difficult (4â˜…+ flowers need regular garden plots)");
             }
             if (species != null && (species.toLowerCase().contains("bush") || 
                                    species.toLowerCase().contains("tree"))) {
@@ -403,11 +403,11 @@ public class PlantingActions {
             player.removeFromInventory(selectedSeed);
 
             String plotType = selectedPlot.isFlowerPot() ? "flower pot" : "plot";
-            System.out.println("\n✅ You successfully planted " + selectedSeed.getName() + 
+            System.out.println("\nâœ… You successfully planted " + selectedSeed.getName() + 
                     " in the " + plotType + "!");
 
             if (selectedPlot.isFlowerPot()) {
-                System.out.println("💡 Tip: Flower pots don't need weeding, but plants take double durability damage if not watered!");
+                System.out.println("ðŸ’¡ Tip: Flower pots don't need weeding, but plants take double durability damage if not watered!");
             } else {
                 System.out.println("Remember to water it regularly for it to grow!");
             }
@@ -420,7 +420,7 @@ public class PlantingActions {
             System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
             return true;
         } else {
-            System.out.println("\n❌ Something went wrong. The seed couldn't be planted.");
+            System.out.println("\nâŒ Something went wrong. The seed couldn't be planted.");
             return false;
         }
     }
