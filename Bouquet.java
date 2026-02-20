@@ -126,7 +126,7 @@ public class Bouquet {
      */
     public String getDetailedDescription() {
         StringBuilder sb = new StringBuilder();
-        sb.append("ðŸ’ ").append(getDisplayName()).append("\n");
+        sb.append("💐 ").append(getDisplayName()).append("\n");
         sb.append("Base Value: ").append((int)baseValue).append(" credits\n");
         sb.append("Created: Day ").append(dayCreated).append("\n");
         sb.append("\nContents:\n");
@@ -141,7 +141,7 @@ public class Bouquet {
         // Display sorted
         flowerCounts.entrySet().stream()
             .sorted(java.util.Map.Entry.comparingByKey())
-            .forEach(entry -> sb.append("  â€¢ ").append(entry.getValue())
+            .forEach(entry -> sb.append("  • ").append(entry.getValue())
                 .append("x ").append(entry.getKey()).append("\n"));
         
         return sb.toString();

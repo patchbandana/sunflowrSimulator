@@ -490,7 +490,7 @@ public class gardenPlot {
         if (isFlowerPot) {
             sb.append("🪴 Flower Pot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
         } else {
-            sb.append("ðŸ“¦ Garden Plot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
+            sb.append("📦 Garden Plot [Soil: ").append(getSoilQualityEmoji()).append(" ").append(soilQuality).append("]").append("\n");
         }
         
         if (isOccupied()) {
@@ -504,25 +504,25 @@ public class gardenPlot {
             sb.append("  [Empty]\n");
         }
         
-        sb.append("  Watered: ").append(isWatered ? "âœ…" : "âŒ").append("\n");
+        sb.append("  Watered: ").append(isWatered ? "✅" : "❌").append("\n");
         
         if (!isFlowerPot) {
-            sb.append("  Weeded: ").append(isWeeded ? "âœ…" : "âŒ").append("\n");
+            sb.append("  Weeded: ").append(isWeeded ? "✅" : "❌").append("\n");
         }
         
-        sb.append("  Fertilized: ").append(isFertilized ? "âœ…" : "âŒ").append("\n");
+        sb.append("  Fertilized: ").append(isFertilized ? "✅" : "❌").append("\n");
         
         return sb.toString();
     }
     
     private String getSoilQualityEmoji() {
         switch (soilQuality) {
-            case "Bad": return "ðŸ’€";
-            case "Average": return "ðŸŒ±";
-            case "Good": return "ðŸŒ¿";
+            case "Bad": return "💀";
+            case "Average": return "🌱";
+            case "Good": return "🌿";
             case "Great": return "✨";
-            case "Magic": return "ðŸ”®";
-            default: return "â“";
+            case "Magic": return "🔮";
+            default: return "❓";
         }
     }
 }

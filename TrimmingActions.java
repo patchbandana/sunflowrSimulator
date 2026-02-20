@@ -111,12 +111,12 @@ public class TrimmingActions {
      * @param trimmablePlotIndices List of indices that can be trimmed
      */
     private static void displayTrimmableGarden(Player1 player, List<Integer> trimmablePlotIndices) {
-        System.out.println("\nðŸŒ± Your Garden Plants ðŸŒ±");
+        System.out.println("\n🌱 Your Garden Plants 🌱");
         List<gardenPlot> gardenPlots = player.getGardenPlots();
         
         for (int i = 0; i < gardenPlots.size(); i++) {
             gardenPlot plot = gardenPlots.get(i);
-            String plotType = plot.isFlowerPot() ? "[🪴]" : "[ðŸ“¦]";
+            String plotType = plot.isFlowerPot() ? "[🪴]" : "[📦]";
             
             if (plot.isOccupied()) {
                 Flower plant = plot.getPlantedFlower();
@@ -252,7 +252,7 @@ public class TrimmingActions {
         
         System.out.println("✨ The bloomed " + plantName + " looks healthier now!");
         System.out.println("   Durability increased by 2.");
-        System.out.println("   ðŸ’¡ Tip: Bloomed is the only stage where trimming increases durability!");
+        System.out.println("   💡 Tip: Bloomed is the only stage where trimming increases durability!");
         
         Journal.addJournalEntry(player, "Trimmed a bloomed " + plantName + ".");
     }
@@ -279,7 +279,7 @@ public class TrimmingActions {
         
         player.addToInventory(bloomedFlower);
         
-        System.out.println("ðŸŒ¸ You carefully trim the mature " + plantName + "!");
+        System.out.println("🌸 You carefully trim the mature " + plantName + "!");
         System.out.println("   You harvested 1 bloomed " + plantName + " flower!");
         System.out.println("   (The plant remains in the ground but gains no durability)");
         
@@ -310,10 +310,10 @@ public class TrimmingActions {
             player.addToInventory(bloomedFlower);
         }
         
-        System.out.println("✨ðŸ’« The mutated " + plantName + " produces an abundance of flowers!");
+        System.out.println("✨💫 The mutated " + plantName + " produces an abundance of flowers!");
         System.out.println("   You harvested " + flowerCount + " bloomed " + plantName + " flowers!");
         System.out.println("   (The mutated plant remains in the ground)");
-        System.out.println("   ðŸ”® Mutated plants don't gain durability from trimming.");
+        System.out.println("   🔮 Mutated plants don't gain durability from trimming.");
         
         Journal.addJournalEntry(player, "Trimmed a mutated " + plantName + " and harvested " + 
                               flowerCount + " bloomed flowers!");
@@ -332,9 +332,9 @@ public class TrimmingActions {
         Flower harvestedFlower = selectedPlot.harvestFlower();
         player.addToInventory(harvestedFlower);
         
-        System.out.println("ðŸ¥€ You trim away the withered " + plantName + ".");
+        System.out.println("🥀 You trim away the withered " + plantName + ".");
         System.out.println("   The plant has been removed and added to your inventory.");
-        System.out.println("   ðŸ’¡ Trimming withered plants is the same as harvesting them.");
+        System.out.println("   💡 Trimming withered plants is the same as harvesting them.");
         
         Journal.addJournalEntry(player, "Trimmed (harvested) a withered " + plantName + ".");
     }

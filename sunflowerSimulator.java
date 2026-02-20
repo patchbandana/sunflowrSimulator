@@ -18,7 +18,7 @@ import java.io.IOException;
 public class sunflowerSimulator {
 
 	public static void main(String[] args) {
-		System.out.println("ðŸŒ» Welcome to Sunflower Simulator! ðŸŒ»");
+		System.out.println("🌻 Welcome to Sunflower Simulator! 🌻");
 		System.out.println("A gardening game developed with love, focus, and dreams.\n");
 
 		Scanner scanner = new Scanner(System.in);
@@ -177,7 +177,7 @@ public class sunflowerSimulator {
 	private static void advanceDay(Player1 player) {
 		Journal.saveGame(player);
 
-		System.out.println("\nðŸ’¤ You drift off to sleep...");
+		System.out.println("\n💤 You drift off to sleep...");
 
 		String dreamContent = null;
 		String dreamFilename = null;
@@ -302,9 +302,9 @@ public class sunflowerSimulator {
 		// Then display dream/hint if applicable
 		if (dreamContent != null) {
 			System.out.println("\n✨ You had a strange dream...\n");
-			System.out.println("â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
+			System.out.println("╔═══════════════════════════════════════╗");
 			System.out.println(dreamContent);
-			System.out.println("â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+			System.out.println("╚═══════════════════════════════════════╝");
 
 			if (showedHint) {
 				System.out.println("\nYou wake up feeling thoughtful about your garden's potential.");
@@ -333,7 +333,7 @@ public class sunflowerSimulator {
 		
 		ShopActions.resetShopInventory(); 
 
-		System.out.println("\nðŸŒ… Day " + player.getDay() + " begins.");
+		System.out.println("\n🌅 Day " + player.getDay() + " begins.");
 		System.out.println("You feel refreshed! (NRG restored to " + player.getNRG() + ")");
 
 		displayGardenSummary(player, weatherOccurred);
@@ -354,16 +354,16 @@ public class sunflowerSimulator {
 		};
 
 		final Map<String, String> CONSOLE_EMOJI_MAP = new HashMap<>();
-		CONSOLE_EMOJI_MAP.put("grew overnight!", "âœ“");
+		CONSOLE_EMOJI_MAP.put("grew overnight!", "✓");
 		CONSOLE_EMOJI_MAP.put("mutated into something special!", "✨");
-		CONSOLE_EMOJI_MAP.put("withered overnight.", "âš ");
-		CONSOLE_EMOJI_MAP.put("watered", "ðŸ’§");
+		CONSOLE_EMOJI_MAP.put("withered overnight.", "⚠");
+		CONSOLE_EMOJI_MAP.put("watered", "💧");
 		CONSOLE_EMOJI_MAP.put("damaged", "⚡");
-		CONSOLE_EMOJI_MAP.put("prevented", "â„ï¸");
-		CONSOLE_EMOJI_MAP.put("earthquake", "ðŸŒ‹");
-		CONSOLE_EMOJI_MAP.put("hurricane", "ðŸŒ€");
-		CONSOLE_EMOJI_MAP.put("Moles", "ðŸ­");
-		CONSOLE_EMOJI_MAP.put("fairies", "ðŸ§š");
+		CONSOLE_EMOJI_MAP.put("prevented", "❄️");
+		CONSOLE_EMOJI_MAP.put("earthquake", "🌋");
+		CONSOLE_EMOJI_MAP.put("hurricane", "🌀");
+		CONSOLE_EMOJI_MAP.put("Moles", "🐭");
+		CONSOLE_EMOJI_MAP.put("fairies", "🧚");
 
 		List<String> summaryMessages = new ArrayList<>();
 		List<String> allEntries = player.getJournalEntries();
@@ -421,7 +421,7 @@ public class sunflowerSimulator {
 		}
 
 		if (!summaryMessages.isEmpty()) {
-			System.out.println("\nðŸŒ± Garden Update:");
+			System.out.println("\n🌱 Garden Update:");
 
 			for (int i = summaryMessages.size() - 1; i >= 0; i--) {
 				System.out.println("  " + summaryMessages.get(i));
@@ -432,7 +432,7 @@ public class sunflowerSimulator {
 		if (weatherOccurred) {
 			String weatherSummary = WeatherSystem.getWeatherSummary();
 			if (weatherSummary != null) {
-				System.out.println("\nðŸŒ¤ï¸ Weather: " + weatherSummary);
+				System.out.println("\n🌤️ Weather: " + weatherSummary);
 			}
 		}
 	}
