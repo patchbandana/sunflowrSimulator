@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.nio.charset.StandardCharsets;
 
 public class Journal {
 	private static final String SAVE_DIRECTORY = "saves/";
@@ -45,7 +46,8 @@ public class Journal {
 
 		String filename = SAVE_DIRECTORY + player.getName() + ".txt";
 
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+		try (BufferedWriter writer = new BufferedWriter(
+				new OutputStreamWriter(new FileOutputStream(filename), StandardCharsets.UTF_8))) {
 			// Write player basic info
 			writer.write("[PLAYER]\n");
 			writer.write("Name=" + player.getName() + "\n");
@@ -101,22 +103,22 @@ public class Journal {
 					if (pot.isFlowerPot()) {
 						writer.write("FlowerPot=empty\n");
 					}
-					// In saveGame() inventory loop, add:
-					else if (item instanceof Bouquet) {
-						Bouquet bouquet = (Bouquet) item;
-						writer.write("Bouquet=" + bouquet.getFlowerCount() + "," + 
-								bouquet.getDayCreated() + "," + 
-								bouquet.getBaseValue());
-						if (bouquet.hasCustomName()) {
-							writer.write("," + bouquet.getCustomName());
-						}
-						writer.write("\n");
+				} else if (item instanceof Bouquet) {
+					Bouquet bouquet = (Bouquet) item;
+					writer.write("Bouquet=" + bouquet.getFlowerCount() + "," + 
+							bouquet.getDayCreated() + "," + 
+							bouquet.getBaseValue());
+					if (bouquet.hasCustomName()) {
+						writer.write("," + bouquet.getCustomName());
+					}
+					writer.write("\n");
 
-						// Save constituent flowers
-						for (int i = 0; i < bouquet.getFlowers().size(); i++) {
-							Flower f = bouquet.getFlowers().get(i);
-							writer.write("BouquetFlower=" + i + "," + /* flower data */ "\n");
-						}
+					// Save constituent flowers
+					for (int i = 0; i < bouquet.getFlowers().size(); i++) {
+						Flower f = bouquet.getFlowers().get(i);
+						writer.write("BouquetFlower=" + i + "," + f.getName() + "," +
+								f.getGrowthStage() + "," + f.getDaysPlanted() + "," +
+								f.getDurability() + "," + f.getCost() + "\n");
 					}
 				}
 			}
@@ -253,7 +255,8 @@ public class Journal {
 		List<String> unlockedDreams = new ArrayList<>();
 		List<String> unlockedHints = new ArrayList<>();
 
-		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+		try (BufferedReader reader = new BufferedReader(
+				new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8))) {
 			String line;
 
 			while ((line = reader.readLine()) != null) {
@@ -274,7 +277,7 @@ public class Journal {
 						if (line.startsWith("NRG=")) {
 							player.setNRG(Integer.parseInt(line.substring(4)));
 						} else if (line.startsWith("Credits=")) {
-							player.setCredits(Double.parseDouble(line.substring(8)));
+							player.setCredits(Integer.parseInt(line.substring(8)));
 						} else if (line.startsWith("Day=")) {
 							player.setDay(Integer.parseInt(line.substring(4)));
 						} else if (line.startsWith("FlowerPotsCrafted=")) {
@@ -416,12 +419,12 @@ public class Journal {
 
 			// Restore unlocked dreams
 			if (player != null && !unlockedDreams.isEmpty()) {
-				player.setUnlockedDreams(unlockedDreams);
+				player.setUnlockedDreams(new HashSet<>(unlockedDreams));
 			}
 
 			// Restore unlocked hints
 			if (player != null && !unlockedHints.isEmpty()) {
-				player.setUnlockedHints(unlockedHints);
+				player.setUnlockedHints(new HashSet<>(unlockedHints));
 			}
 
 			if (player != null) {

@@ -20,7 +20,7 @@ public class JournalActions {
 		while (inJournal) {
 			totalPages = Journal.getTotalJournalPages(player.getName()); 
 
-			System.out.println("\nðŸ“– Journal Menu ðŸ“–");
+			System.out.println("\n📖 Journal Menu 📖");
 			System.out.println("1. View Journal Entries");
 			System.out.println("2. Add New Entry");
 			System.out.println("3. View Dream Journal");
@@ -166,14 +166,14 @@ public class JournalActions {
 		boolean success = Journal.addJournalEntry(player, newEntry);
 
 		if (success) {
-			System.out.println("âœ… New entry added and game saved successfully.");
+			System.out.println("✅ New entry added and game saved successfully.");
 		} else {
-			System.out.println("âŒ Failed to add entry or save game.");
+			System.out.println("❌ Failed to add entry or save game.");
 		}
 	}
 
 	private static void handleViewDreamJournal(Player1 player, Scanner scanner) {
-		System.out.println("\nðŸ˜´ Dream Journal ðŸ˜´");
+		System.out.println("\n😴 Dream Journal 😴");
 
 		if (player.getUnlockedDreams().isEmpty()) {
 			System.out.println("Your dream journal is empty. Keep sleeping to unlock new dreams!");
@@ -218,7 +218,7 @@ public class JournalActions {
 	}
 
 	private static void handleViewTipsCollection(Player1 player, Scanner scanner) {
-		System.out.println("\nðŸ’¡ Tips Collection ðŸ’¡");
+		System.out.println("\n💡 Tips Collection 💡");
 
 		if (player.getUnlockedHints().isEmpty()) {
 			System.out.println("Your tips collection is empty. Keep sleeping past day 20 to unlock helpful tips!");
@@ -270,7 +270,7 @@ public class JournalActions {
 		String hintText = HintReader.readHintFile(hintFile);
 
 		System.out.println("\n======================================");
-		System.out.println("ðŸ’¡ TIP: " + hintFile); 
+		System.out.println("💡 TIP: " + hintFile); 
 		System.out.println("======================================");
 
 		if (hintText != null) {
@@ -292,7 +292,7 @@ public class JournalActions {
 		String dreamText = DreamReader.readDreamFile(dreamFile);
 
 		System.out.println("\n======================================");
-		System.out.println("â­ DREAM: " + dreamFile); 
+		System.out.println("⭐ DREAM: " + dreamFile); 
 		System.out.println("======================================");
 
 		if (dreamText != null) {
@@ -311,12 +311,12 @@ public class JournalActions {
 	}
 
 	private static void handleSaveGame(Player1 player) {
-		System.out.println("\nðŸ’¾ Saving Game...");
+		System.out.println("\n💾 Saving Game...");
 		boolean success = Journal.saveGame(player);
 		if (success) {
-			System.out.println("âœ… Adventure saved successfully!");
+			System.out.println("✅ Adventure saved successfully!");
 		} else {
-			System.out.println("âŒ Error saving game.");
+			System.out.println("❌ Error saving game.");
 		}
 	}
 
@@ -339,7 +339,7 @@ public class JournalActions {
 			Journal.resetGame(newPlayer);
 			Journal.addJournalEntry(newPlayer, "Started a new adventure! (New Game+)");
 
-			System.out.println("\nðŸ”„ Game has been reset successfully!");
+			System.out.println("\n🔄 Game has been reset successfully!");
 			System.out.println("Welcome to your new adventure, " + nameToKeep + "!");
 			System.out.println("It is day " + newPlayer.getDay() + ".");
 			System.out.println("You have " + newPlayer.getNRG() + " NRG and " + newPlayer.getCredits() + " credits.");

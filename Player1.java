@@ -231,7 +231,7 @@ public class Player1 {
 		if (inventory.isEmpty()) {
 			System.out.println("Your backpack is empty.");
 		} else {
-			System.out.println("ðŸ“¦ Inventory:");
+			System.out.println("📦 Inventory:");
 			for (int i = 0; i < inventory.size(); i++) {
 				System.out.println("- " + inventory.get(i));
 			}
@@ -239,7 +239,7 @@ public class Player1 {
 	}
 
 	public void printGarden() {
-		System.out.println("\nðŸŒ± Your Garden ðŸŒ±");
+		System.out.println("\n🌱 Your Garden 🌱");
 		for (int i = 0; i < gardenPlots.size(); i++) {
 			System.out.println("Plot #" + (i+1) + ":");
 			System.out.println(gardenPlots.get(i));
@@ -268,6 +268,10 @@ public class Player1 {
 
 	public int getDay() {
 		return day;
+	}
+
+	public void setDay(int day) {
+		this.day = day;
 	}
 
 	public AuctionHouse getAuctionHouse() {
@@ -447,9 +451,9 @@ public class Player1 {
 
 		if (totalGrew > 0) {
 			if (totalGrew == 1) {
-				addJournalEntry("ðŸŒ± 1 plant grew overnight!");
+				addJournalEntry("🌱 1 plant grew overnight!");
 			} else {
-				addJournalEntry("ðŸŒ± " + totalGrew + " plants grew overnight!");
+				addJournalEntry("🌱 " + totalGrew + " plants grew overnight!");
 			}
 		}
 
@@ -463,9 +467,9 @@ public class Player1 {
 
 		if (totalWithered > 0) {
 			if (totalWithered == 1) {
-				addJournalEntry("ðŸ¥€ 1 plant withered overnight.");
+				addJournalEntry("🥀 1 plant withered overnight.");
 			} else {
-				addJournalEntry("ðŸ¥€ " + totalWithered + " plants withered overnight.");
+				addJournalEntry("🥀 " + totalWithered + " plants withered overnight.");
 			}
 		}
 
@@ -489,10 +493,10 @@ public class Player1 {
 		}
 
 		if (needsWater) {
-			addJournalEntry("ðŸ’§ Your plants need watering!");
+			addJournalEntry("💧 Your plants need watering!");
 		}
 		if (needsWeeding) {
-			addJournalEntry("ðŸŒ¿ Some weeds appeared in the garden.");
+			addJournalEntry("🌿 Some weeds appeared in the garden.");
 		}
 	}
 }
