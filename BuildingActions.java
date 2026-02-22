@@ -1,6 +1,6 @@
 /* BuildingActions.java
  * Handles all building-related actions including flower pot crafting and garden plot expansion
- * Updated: November 23, 2025 - Added compost bin access
+ * Updated: November 26, 2025 - Added greenhouse construction and scaling costs
  */
 
 import java.util.Scanner;
@@ -83,6 +83,15 @@ public class BuildingActions {
 	            }
 	        }
 	        
+	        if (player.hasCompostBin()) {
+	            if (buildChoice.equals(String.valueOf(currentOption))) {
+	                buildGreenhouse(player, scanner);
+	                currentOption++;
+	                continue;
+	            }
+	            currentOption++;
+	        }
+
 	        // Return option (always last)
 	        if (buildChoice.equals(String.valueOf(currentOption))) {
 	            inBuildMenu = false;
@@ -136,7 +145,11 @@ public class BuildingActions {
 	            System.out.println("  ❌ Sprinkler system not installed");
 	        }
 	    }
-	    
+
+	    System.out.println("🏡 Greenhouse Status:");
+	    System.out.println("  • Greenhouses built: " + player.getGreenhouseCount());
+	    System.out.println("  • Weather protection capacity: " + player.getGreenhouseProtectionCapacity() + " plants");
+	
 	    System.out.println();
 
 	    int optionNum = 1;
@@ -176,6 +189,12 @@ public class BuildingActions {
 	            System.out.println(optionNum + ": Install Sprinkler System (20 credits, 20 NRG)");
 	            optionNum++;
 	        }
+	    }
+
+	    if (player.hasCompostBin()) {
+	        int[] greenhouseCosts = calculateGreenhouseCost(player.getGreenhouseCount());
+	        System.out.println(optionNum + ": Build Greenhouse (" + greenhouseCosts[1] + " credits, " + greenhouseCosts[0] + " NRG)");
+	        optionNum++;
 	    }
 	    
 	    System.out.println(optionNum + ": Return to Main Menu");
@@ -541,4 +560,66 @@ public class BuildingActions {
 	        System.out.println("Installation cancelled.");
 	    }
 	}
+
+
+	private static int[] calculateGreenhouseCost(int currentGreenhouseCount) {
+		int nextGreenhouseNumber = currentGreenhouseCount + 1;
+		double scalingMultiplier = Math.pow(1.25, nextGreenhouseNumber - 1);
+		int nrgCost = (int) Math.ceil(25 * scalingMultiplier);
+		int creditCost = (int) Math.ceil(2000 * scalingMultiplier);
+		return new int[]{nrgCost, creditCost};
+	}
+
+	private static void buildGreenhouse(Player1 player, Scanner scanner) {
+		int nextGreenhouse = player.getGreenhouseCount() + 1;
+		int[] costs = calculateGreenhouseCost(player.getGreenhouseCount());
+		int greenhouseNRGCost = costs[0];
+		int greenhouseCreditCost = costs[1];
+
+		System.out.println("\n🏡 Greenhouse Construction 🏡");
+		System.out.println("Cost: " + greenhouseCreditCost + " credits, " + greenhouseNRGCost + " NRG");
+		System.out.println();
+		System.out.println("The greenhouse protects your FIRST 20 plants from weather hazards:");
+		System.out.println("  ✓ Blocks snow damage");
+		System.out.println("  ✓ Blocks moles");
+		System.out.println("  ✓ Blocks rain effects");
+		System.out.println("  ✓ Fairies can still enter (beneficial blessings)");
+		System.out.println();
+		System.out.println("Greenhouse #" + nextGreenhouse + " will protect up to " + (nextGreenhouse * 20) + " plants total.");
+
+		if (player.getCredits() < greenhouseCreditCost) {
+			System.out.println("\n❌ You don't have enough credits! Need " + greenhouseCreditCost + ", have " + player.getCredits());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		if (player.getNRG() < greenhouseNRGCost) {
+			System.out.println("\n❌ You don't have enough energy! Need " + greenhouseNRGCost + " NRG, have " + player.getNRG());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		System.out.print("\nBuild greenhouse #" + nextGreenhouse + "? (yes/no): ");
+		String confirm = scanner.nextLine().toLowerCase();
+
+		if (confirm.equals("yes")) {
+			player.setCredits(player.getCredits() - greenhouseCreditCost);
+			player.setNRG(player.getNRG() - greenhouseNRGCost);
+			player.buildGreenhouse();
+
+			System.out.println("\n✅ Greenhouse #" + nextGreenhouse + " built successfully!");
+			System.out.println("Your first " + player.getGreenhouseProtectionCapacity() + " plants are now weather-protected");
+			System.out.println("(except fairy visits, which can still bless them).");
+			System.out.println();
+			System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+
+			Journal.addJournalEntry(player, "Built greenhouse #" + nextGreenhouse + " to shield plants from weather.");
+			Journal.saveGame(player);
+		} else {
+			System.out.println("Construction cancelled.");
+		}
+	}
+
 }

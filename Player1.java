@@ -39,6 +39,9 @@ public class Player1 {
 	private boolean hasMulcher;
 	private int mulcherDaysRemaining; // Days of 0.25x weed growth remaining
 	private boolean hasSprinklerSystem;
+	
+	// Greenhouse structures
+	private int greenhouseCount;
 
 	public Player1(String name) {
 		this.name = name;
@@ -66,6 +69,7 @@ public class Player1 {
 		this.hasMulcher = false;
 	    this.mulcherDaysRemaining = 0;
 	    this.hasSprinklerSystem = false;
+	    this.greenhouseCount = 0;
 	}
 
 	public void addToInventory(Object item) {
@@ -406,6 +410,22 @@ public class Player1 {
 	 */
 	public void installSprinklerSystem() {
 	    this.hasSprinklerSystem = true;
+	}
+
+	public int getGreenhouseCount() {
+		return greenhouseCount;
+	}
+
+	public void setGreenhouseCount(int greenhouseCount) {
+		this.greenhouseCount = Math.max(0, greenhouseCount);
+	}
+
+	public void buildGreenhouse() {
+		this.greenhouseCount++;
+	}
+
+	public int getGreenhouseProtectionCapacity() {
+		return greenhouseCount * 20;
 	}
 
 	public void advanceDay() {
