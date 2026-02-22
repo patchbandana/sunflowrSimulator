@@ -69,7 +69,11 @@ public class sunflowerSimulator {
 			System.out.println("4: Build");
 			System.out.println("5: Shop");
 			System.out.println("6: Backpack");
-			System.out.println("7: Trim Plants");
+			if (player.hasBuzzsaw()) {
+				System.out.println("7: Trim All Plants");
+			} else {
+				System.out.println("7: Trim Plants");
+			}
 			System.out.println("8: Check");
 			System.out.println("9: Journal");
 			System.out.println("0: Go to bed");
