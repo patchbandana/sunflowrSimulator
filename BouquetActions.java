@@ -69,9 +69,13 @@ public class BouquetActions {
         } else {
             // Ask if they want to name this new composition
             System.out.print("\nWould you like to give this bouquet a custom name? (yes/no): ");
-            String nameChoice = scanner.nextLine().toLowerCase();
+            String nameChoice = scanner.nextLine().trim().toLowerCase();
             
-            if (nameChoice.equals("yes")) {
+            // Only explicit "no" or "n" skips naming; anything else proceeds to naming prompt.
+            if (!nameChoice.equals("no") && !nameChoice.equals("n")) {
+                if (!nameChoice.equals("yes") && !nameChoice.equals("y")) {
+                    System.out.println("Interpreting response as yes. Enter a name to continue.");
+                }
                 System.out.print("Enter bouquet name: ");
                 customName = scanner.nextLine().trim();
                 if (customName.isEmpty()) {

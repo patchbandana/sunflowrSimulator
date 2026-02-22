@@ -26,6 +26,7 @@ public class gardenPlot {
     
     // NEW: Track consecutive days without water for escalating penalties
     private int consecutiveDaysWithoutWater;
+    private String lastWitherReason;
     
     /**
      * Creates a new garden plot with default values
@@ -38,6 +39,7 @@ public class gardenPlot {
         this.soilQuality = "Average";
         this.isFlowerPot = false;
         this.consecutiveDaysWithoutWater = 0;
+        this.lastWitherReason = null;
     }
     
     /**
@@ -69,6 +71,14 @@ public class gardenPlot {
         this.consecutiveDaysWithoutWater = days;
     }
     
+    /**
+     * Returns the reason the current/most recent plant withered during advanceDay.
+     * Reset when a new plant is planted or harvested.
+     */
+    public String getLastWitherReason() {
+        return lastWitherReason;
+    }
+
     public boolean isFlowerPot() {
         return isFlowerPot;
     }
@@ -145,6 +155,7 @@ public class gardenPlot {
         flower.setDaysPlanted(1);
         this.plantedFlower = flower;
         this.consecutiveDaysWithoutWater = 0; // Reset counter for new plant
+        this.lastWitherReason = null;
         return true;
     }
     
@@ -161,6 +172,7 @@ public class gardenPlot {
         this.plantedFlower = null;
         this.isWatered = false;
         this.consecutiveDaysWithoutWater = 0; // Reset counter
+        this.lastWitherReason = null;
         return harvestedFlower;
     }
     
@@ -264,6 +276,9 @@ public class gardenPlot {
             return false;
         }
         
+        // Clear previous wither reason for this day
+        lastWitherReason = null;
+
         // Increment days planted
         plantedFlower.setDaysPlanted(plantedFlower.getDaysPlanted() + 1);
         
@@ -282,6 +297,7 @@ public class gardenPlot {
             // Day 7 without water: Instant wither
             if (consecutiveDaysWithoutWater >= 7) {
                 plantedFlower.setDurability(0); // Triggers auto-wither in Flower.java
+                lastWitherReason = "it went 7 consecutive days without water";
                 // Plant is now withered, reset counter
                 consecutiveDaysWithoutWater = 0;
             } else {
@@ -331,6 +347,10 @@ public class gardenPlot {
             if (this.isFertilized && Math.random() < 0.0075) {
                 upgradeSoilQuality();
             }
+            if (lastWitherReason == null) {
+                lastWitherReason = "its durability reached 0 from neglect";
+            }
+            plantedFlower.setDurability(0);
             return true; // State changed (withered)
         }
         
@@ -401,6 +421,8 @@ public class gardenPlot {
                     
                     if (Math.random() < witherProbability) {
                         plantedFlower.setGrowthStage("Withered");
+                        plantedFlower.setDurability(0);
+                        lastWitherReason = "it naturally withered at mature stage (soil quality affects this chance)";
                         didGrow = true;
                     }
                     // If doesn't wither, stays Matured for another day
