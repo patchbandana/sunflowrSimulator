@@ -149,6 +149,7 @@ public class BuildingActions {
             }
 
             if (player.hasHeatLamp()) {
+	            if (player.hasHeatLamp()) {
 	                if (buildChoice.equals(String.valueOf(currentOption))) {
 	                    useHeatLamp(player, scanner);
 	                    currentOption++;
@@ -890,4 +891,6 @@ public class BuildingActions {
 		Journal.saveGame(player);
 	}
 
+}
+}
 }
