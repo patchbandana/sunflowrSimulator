@@ -64,6 +64,11 @@ public class Journal {
 			writer.write("MulcherDaysRemaining=" + player.getMulcherDaysRemaining() + "\n");
 			writer.write("HasSprinklerSystem=" + player.hasSprinklerSystem() + "\n");
 			writer.write("GreenhouseCount=" + player.getGreenhouseCount() + "\n");
+			writer.write("HasDripIrrigationLines=" + player.hasDripIrrigationLines() + "\n");
+			writer.write("HasGrowLight=" + player.hasGrowLight() + "\n");
+			writer.write("HasSeedStartingTray=" + player.hasSeedStartingTray() + "\n");
+			writer.write("HasHeatLamp=" + player.hasHeatLamp() + "\n");
+			writer.write("HasBuzzsaw=" + player.hasBuzzsaw() + "\n");
 
 			LocalDateTime now = LocalDateTime.now();
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -317,6 +322,16 @@ public class Journal {
 							player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
 						} else if (line.startsWith("GreenhouseCount=")) {
 							player.setGreenhouseCount(Integer.parseInt(line.substring(16)));
+						} else if (line.startsWith("HasDripIrrigationLines=")) {
+							player.setHasDripIrrigationLines(Boolean.parseBoolean(line.substring(23)));
+						} else if (line.startsWith("HasGrowLight=")) {
+							player.setHasGrowLight(Boolean.parseBoolean(line.substring(13)));
+						} else if (line.startsWith("HasSeedStartingTray=")) {
+							player.setHasSeedStartingTray(Boolean.parseBoolean(line.substring(20)));
+						} else if (line.startsWith("HasHeatLamp=")) {
+							player.setHasHeatLamp(Boolean.parseBoolean(line.substring(12)));
+						} else if (line.startsWith("HasBuzzsaw=")) {
+							player.setHasBuzzsaw(Boolean.parseBoolean(line.substring(11)));
 						}
 					}
 				} else if (section.equals("UNLOCKED_DREAMS") && line.startsWith("Dream=")) {

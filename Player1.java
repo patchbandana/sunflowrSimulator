@@ -43,6 +43,13 @@ public class Player1 {
 	// Greenhouse structures
 	private int greenhouseCount;
 
+	// Greenhouse-tier upgrades
+	private boolean hasDripIrrigationLines;
+	private boolean hasGrowLight;
+	private boolean hasSeedStartingTray;
+	private boolean hasHeatLamp;
+	private boolean hasBuzzsaw;
+
 	public Player1(String name) {
 		this.name = name;
 		this.nrg = 10;
@@ -70,6 +77,11 @@ public class Player1 {
 	    this.mulcherDaysRemaining = 0;
 	    this.hasSprinklerSystem = false;
 	    this.greenhouseCount = 0;
+	    this.hasDripIrrigationLines = false;
+	    this.hasGrowLight = false;
+	    this.hasSeedStartingTray = false;
+	    this.hasHeatLamp = false;
+	    this.hasBuzzsaw = false;
 	}
 
 	public void addToInventory(Object item) {
@@ -428,6 +440,67 @@ public class Player1 {
 		return greenhouseCount * 20;
 	}
 
+
+	public boolean hasDripIrrigationLines() {
+		return hasDripIrrigationLines;
+	}
+
+	public void installDripIrrigationLines() {
+		this.hasDripIrrigationLines = true;
+	}
+
+	public void setHasDripIrrigationLines(boolean hasDripIrrigationLines) {
+		this.hasDripIrrigationLines = hasDripIrrigationLines;
+	}
+
+	public boolean hasGrowLight() {
+		return hasGrowLight;
+	}
+
+	public void installGrowLight() {
+		this.hasGrowLight = true;
+	}
+
+	public void setHasGrowLight(boolean hasGrowLight) {
+		this.hasGrowLight = hasGrowLight;
+	}
+
+	public boolean hasSeedStartingTray() {
+		return hasSeedStartingTray;
+	}
+
+	public void installSeedStartingTray() {
+		this.hasSeedStartingTray = true;
+	}
+
+	public void setHasSeedStartingTray(boolean hasSeedStartingTray) {
+		this.hasSeedStartingTray = hasSeedStartingTray;
+	}
+
+	public boolean hasHeatLamp() {
+		return hasHeatLamp;
+	}
+
+	public void installHeatLamp() {
+		this.hasHeatLamp = true;
+	}
+
+	public void setHasHeatLamp(boolean hasHeatLamp) {
+		this.hasHeatLamp = hasHeatLamp;
+	}
+
+	public boolean hasBuzzsaw() {
+		return hasBuzzsaw;
+	}
+
+	public void installBuzzsaw() {
+		this.hasBuzzsaw = true;
+	}
+
+	public void setHasBuzzsaw(boolean hasBuzzsaw) {
+		this.hasBuzzsaw = hasBuzzsaw;
+	}
+
 	public void advanceDay() {
 		this.day++;
 		this.nrg = 10;
@@ -519,6 +592,17 @@ public class Player1 {
 			}
 		}
 
+		if (hasDripIrrigationLines) {
+			autoWaterGreenhouseCoveredPlants();
+			needsWater = false;
+			for (gardenPlot plot : gardenPlots) {
+				if (plot.isOccupied() && !plot.isWatered()) {
+					needsWater = true;
+					break;
+				}
+			}
+		}
+
 		if (needsWater) {
 			addJournalEntry("💧 Your plants need watering!");
 		}
@@ -526,4 +610,25 @@ public class Player1 {
 			addJournalEntry("🌿 Some weeds appeared in the garden.");
 		}
 	}
+
+	private void autoWaterGreenhouseCoveredPlants() {
+		int protectionCapacity = getGreenhouseProtectionCapacity();
+		if (protectionCapacity <= 0) {
+			return;
+		}
+
+		int occupiedCount = 0;
+		for (gardenPlot plot : gardenPlots) {
+			if (!plot.isOccupied()) {
+				continue;
+			}
+
+			occupiedCount++;
+			if (occupiedCount <= protectionCapacity) {
+				plot.setWatered(true);
+				plot.setConsecutiveDaysWithoutWater(0);
+			}
+		}
+	}
+
 }
