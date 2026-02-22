@@ -138,6 +138,17 @@ public class BuildingActions {
 	                currentOption++;
 	            }
 
+	
+            if (!player.hasCraftedMantle()) {
+                if (buildChoice.equals(String.valueOf(currentOption))) {
+                    buildMantle(player, scanner);
+                    currentOption++;
+                    continue;
+                }
+                currentOption++;
+            }
+
+            if (player.hasHeatLamp()) {
 	            if (player.hasHeatLamp()) {
 	                if (buildChoice.equals(String.valueOf(currentOption))) {
 	                    useHeatLamp(player, scanner);
@@ -205,6 +216,7 @@ public class BuildingActions {
 	    System.out.println("🏡 Greenhouse Status:");
 	    System.out.println("  • Greenhouses built: " + player.getGreenhouseCount());
 	    System.out.println("  • Weather protection capacity: " + player.getGreenhouseProtectionCapacity() + " plants");
+    System.out.println("  • Mantle: " + (player.hasPlacedMantle() ? "Placed in garden" : (player.hasCraftedMantle() ? "Crafted (in backpack)" : "Not built")));
 	
 	    System.out.println();
 
@@ -275,6 +287,10 @@ public class BuildingActions {
 	            System.out.println(optionNum + ": Install Buzzsaw (1750 credits, 22 NRG)");
 	            optionNum++;
 	        }
+        if (!player.hasCraftedMantle()) {
+            System.out.println(optionNum + ": Build Mantle (4883 credits, 62 NRG)");
+            optionNum++;
+        }
 	        if (player.hasHeatLamp()) {
 	            System.out.println(optionNum + ": Use Heat Lamp (instantly wither one planted flower)");
 	            optionNum++;
@@ -708,6 +724,48 @@ public class BuildingActions {
 
 
 
+	private static void buildMantle(Player1 player, Scanner scanner) {
+		int mantleCredits = 4883;
+		int mantleNRG = 62;
+
+		System.out.println("\n🏠 Mantle Construction 🏠");
+		System.out.println("Cost: " + mantleCredits + " credits, " + mantleNRG + " NRG");
+		System.out.println("A decorative mantle used to display your bouquet accomplishments.");
+		System.out.println("Place it from your backpack, then showcase custom names, flower stages, and value.");
+
+		if (player.getCredits() < mantleCredits) {
+			System.out.println("❌ You don't have enough credits! Need " + mantleCredits + ", have " + player.getCredits());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+		if (player.getNRG() < mantleNRG) {
+			System.out.println("❌ You don't have enough energy! Need " + mantleNRG + " NRG, have " + player.getNRG());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		System.out.print("Build the mantle? (yes/no): ");
+		String confirm = scanner.nextLine().toLowerCase();
+		if (!confirm.equals("yes")) {
+			System.out.println("Construction cancelled.");
+			return;
+		}
+
+		player.setCredits(player.getCredits() - mantleCredits);
+		player.setNRG(player.getNRG() - mantleNRG);
+		player.craftMantle();
+		player.addToInventory(new Mantle());
+
+		System.out.println("✅ Mantle built and added to your backpack!");
+		System.out.println("Use it from backpack to place it in your garden and display bouquets.");
+		System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+		Journal.addJournalEntry(player, "Built a mantle to display bouquet achievements.");
+		Journal.saveGame(player);
+	}
+
+
 	private static boolean handleUpgradePurchase(Player1 player, Scanner scanner, String title,
 			int creditCost, int nrgCost, String benefitDescription, Runnable onSuccess, String journalEntry) {
 		System.out.println("\n" + title);
@@ -833,5 +891,6 @@ public class BuildingActions {
 		Journal.saveGame(player);
 	}
 
+}
 }
 }

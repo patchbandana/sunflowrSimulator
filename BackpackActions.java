@@ -95,6 +95,8 @@ public class BackpackActions {
                         System.out.println("🪴 Empty Flower Pot");
                     }
                 }
+            } else if (item instanceof Mantle) {
+                System.out.println("🏠 Mantle (place in garden)");
             } else {
                 System.out.println(item.toString());
             }
@@ -133,6 +135,10 @@ public class BackpackActions {
             if (plot.isFlowerPot()) {
                 useFlowerPot(player, plot, scanner);
             }
+        } else if (selectedItem instanceof Mantle) {
+            placeMantle(player, (Mantle) selectedItem);
+        } else if (selectedItem instanceof Bouquet) {
+            useBouquet(player, (Bouquet) selectedItem, scanner);
         } else {
             System.out.println("You can't use this item right now.");
         }
@@ -277,6 +283,50 @@ public class BackpackActions {
         }
     }
     
+    private static void placeMantle(Player1 player, Mantle mantleItem) {
+        if (player.hasPlacedMantle()) {
+            System.out.println("Your mantle is already placed in the garden.");
+            return;
+        }
+
+        player.removeFromInventory(mantleItem);
+        player.setPlacedMantle(mantleItem);
+        System.out.println("🏠 You placed your mantle in the garden.");
+        System.out.println("It now displays bouquets as a decorative accomplishment wall.");
+        Journal.addJournalEntry(player, "Placed the mantle in the garden.");
+        Journal.saveGame(player);
+    }
+
+    private static void useBouquet(Player1 player, Bouquet bouquet, Scanner scanner) {
+        System.out.println("\n💐 " + bouquet.getDisplayName());
+        System.out.println("1: Inspect bouquet details");
+        if (player.hasPlacedMantle()) {
+            System.out.println("2: Display on mantle");
+        }
+        System.out.println("0: Cancel");
+
+        System.out.print("Choice: ");
+        String choice = scanner.nextLine();
+
+        if (choice.equals("1")) {
+            System.out.println(bouquet.getDetailedDescription());
+            return;
+        }
+
+        if (choice.equals("2") && player.hasPlacedMantle()) {
+            Mantle mantle = player.getPlacedMantle();
+            mantle.addBouquet(bouquet);
+            player.removeFromInventory(bouquet);
+            System.out.println("✅ Bouquet placed on mantle display.");
+            System.out.println(mantle.getDisplaySummary());
+            Journal.addJournalEntry(player, "Displayed bouquet on mantle: " + bouquet.getDisplayName() + ".");
+            Journal.saveGame(player);
+            return;
+        }
+
+        System.out.println("Cancelled.");
+    }
+
     /**
      * Handles rearranging items in inventory
      */

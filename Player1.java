@@ -50,6 +50,10 @@ public class Player1 {
 	private boolean hasHeatLamp;
 	private boolean hasBuzzsaw;
 
+	// Mantle progression
+	private boolean hasCraftedMantle;
+	private Mantle placedMantle;
+
 	public Player1(String name) {
 		this.name = name;
 		this.nrg = 10;
@@ -82,6 +86,8 @@ public class Player1 {
 	    this.hasSeedStartingTray = false;
 	    this.hasHeatLamp = false;
 	    this.hasBuzzsaw = false;
+	    this.hasCraftedMantle = false;
+	    this.placedMantle = null;
 	}
 
 	public void addToInventory(Object item) {
@@ -259,6 +265,11 @@ public class Player1 {
 		for (int i = 0; i < gardenPlots.size(); i++) {
 			System.out.println("Plot #" + (i+1) + ":");
 			System.out.println(gardenPlots.get(i));
+		}
+
+		if (hasPlacedMantle()) {
+			System.out.println();
+			System.out.println(placedMantle.getDisplaySummary());
 		}
 	}
 
@@ -499,6 +510,32 @@ public class Player1 {
 
 	public void setHasBuzzsaw(boolean hasBuzzsaw) {
 		this.hasBuzzsaw = hasBuzzsaw;
+	}
+
+
+
+	public boolean hasCraftedMantle() {
+		return hasCraftedMantle;
+	}
+
+	public void setHasCraftedMantle(boolean hasCraftedMantle) {
+		this.hasCraftedMantle = hasCraftedMantle;
+	}
+
+	public void craftMantle() {
+		this.hasCraftedMantle = true;
+	}
+
+	public Mantle getPlacedMantle() {
+		return placedMantle;
+	}
+
+	public void setPlacedMantle(Mantle placedMantle) {
+		this.placedMantle = placedMantle;
+	}
+
+	public boolean hasPlacedMantle() {
+		return placedMantle != null;
 	}
 
 	public void advanceDay() {
