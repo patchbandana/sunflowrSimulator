@@ -443,6 +443,13 @@ public class Player1 {
 					totalMutated++;
 				} else if (stageAfter.equals("Withered")) {
 					totalWithered++;
+					String witherReason = plot.getLastWitherReason();
+					String plotType = plot.isFlowerPot() ? "flower pot" : "plot #" + (i + 1);
+					String plantName = plot.getPlantedFlower() != null ? plot.getPlantedFlower().getName() : "A plant";
+					if (witherReason == null || witherReason.isEmpty()) {
+						witherReason = "an unknown reason";
+					}
+					addJournalEntry("🥀 " + plantName + " withered in " + plotType + " because " + witherReason + ".");
 				} else {
 					totalGrew++;
 				}

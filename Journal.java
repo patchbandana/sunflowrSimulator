@@ -348,7 +348,7 @@ public class Journal {
 					} else if (line.startsWith("CurrentBid=")) {
 						currentBid = Double.parseDouble(line.substring(11));
 					} else if (line.startsWith("BouquetName=")) {
-						auctionBouquetName = line.substring(11);
+						auctionBouquetName = line.substring(12);
 					} else if (line.startsWith("BouquetDayCreated=")) {
 						auctionBouquetDayCreated = Integer.parseInt(line.substring(18));
 					} else if (line.startsWith("BouquetFlower=")) {
