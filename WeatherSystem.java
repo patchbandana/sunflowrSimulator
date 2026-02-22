@@ -1,6 +1,6 @@
 /* WeatherSystem.java
  * Manages weather events and their effects on the garden
- * Updated: November 25, 2025 - Enhanced with diverse weather types
+ * Updated: November 26, 2025 - Added greenhouse weather shielding support
  * 
  * WEATHER MECHANICS:
  * - Triggers 25% of nights (independent of dreams/hints)
@@ -15,7 +15,7 @@
  * 
  * PROTECTED LOCATIONS:
  * - Flower pots (protected from snow and moles)
- * - Greenhouse structures (future - full protection)
+ * - Greenhouse structures (first N plants protected; fairies can still bless)
  * - Items in backpack (not affected by weather)
  */
 
@@ -157,95 +157,122 @@ public class WeatherSystem {
      */
     private static void applyRainEffects(Player1 player) {
         int wateredCount = 0;
-        
-        for (gardenPlot plot : player.getGardenPlots()) {
+        int blockedByGreenhouse = 0;
+
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
             if (plot.isOccupied() && !plot.isWatered()) {
+                if (isPlantProtectedByGreenhouse(player, i)) {
+                    blockedByGreenhouse++;
+                    continue;
+                }
+
                 plot.setWatered(true);
                 plot.setConsecutiveDaysWithoutWater(0);
                 wateredCount++;
             }
         }
-        
-        if (wateredCount > 0) {
-            player.addJournalEntry("[Rain] Rain watered " + wateredCount + (wateredCount == 1 ? " plant" : " plants") + " overnight!");
+
+        if (wateredCount > 0 || blockedByGreenhouse > 0) {
+            player.addJournalEntry("[Rain] Rain watered " + wateredCount + (wateredCount == 1 ? " plant" : " plants") +
+                    (blockedByGreenhouse > 0 ? " while " + blockedByGreenhouse + " greenhouse-protected plant" +
+                            (blockedByGreenhouse == 1 ? " was" : "s were") + " shielded from rain." : " overnight!"));
         }
     }
-    
+
     /**
      * Snow: Prevents weed growth, -50% durability to unprotected plants
-     * Protected: Flower pots, greenhouses (future)
+     * Protected: Flower pots and greenhouse-covered plants
      */
     private static void applySnowEffects(Player1 player) {
         int affectedPlants = 0;
         int protectedPlants = 0;
-        
-        for (gardenPlot plot : player.getGardenPlots()) {
+
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
             if (plot.isOccupied()) {
                 Flower plant = plot.getPlantedFlower();
-                
-                if (!plot.isFlowerPot()) {
+
+                if (isPlotProtected(plot) || isPlantProtectedByGreenhouse(player, i)) {
+                    protectedPlants++;
+                } else {
                     double currentDurability = plant.getDurability();
                     double durabilityLoss = currentDurability * 0.5;
                     plant.setDurability(currentDurability - durabilityLoss);
                     affectedPlants++;
-                } else {
-                    protectedPlants++;
                 }
             }
-            
+
             if (!plot.isFlowerPot()) {
                 plot.setWeeded(true);
             }
         }
-        
+
         if (affectedPlants > 0 && protectedPlants > 0) {
-            player.addJournalEntry("[Snow] Snow damaged " + affectedPlants + 
-                    (affectedPlants == 1 ? " plant" : " plants") + " but " + protectedPlants + " in pots were protected. Weeds prevented.");
+            player.addJournalEntry("[Snow] Snow damaged " + affectedPlants +
+                    (affectedPlants == 1 ? " plant" : " plants") + " while " + protectedPlants +
+                    " greenhouse/pot protected plant" + (protectedPlants == 1 ? " was" : "s were") + " safe. Weeds prevented.");
         } else if (affectedPlants > 0) {
-            player.addJournalEntry("[Snow] Snow damaged " + affectedPlants + 
+            player.addJournalEntry("[Snow] Snow damaged " + affectedPlants +
                     (affectedPlants == 1 ? " plant" : " plants") + " and prevented weed growth.");
         } else if (protectedPlants > 0) {
-            player.addJournalEntry("[Snow] Snow fell, but all plants were protected in pots. Weeds prevented.");
+            player.addJournalEntry("[Snow] Snow fell, but all plants were protected. Weeds prevented.");
         }
     }
-    
+
     /**
      * Thunderstorm: All plants watered, -10 durability to all plants
      */
     private static void applyThunderstormEffects(Player1 player) {
         int wateredCount = 0;
         int damagedCount = 0;
-        
-        for (gardenPlot plot : player.getGardenPlots()) {
+        int protectedCount = 0;
+
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
             if (plot.isOccupied()) {
+                if (isPlantProtectedByGreenhouse(player, i)) {
+                    protectedCount++;
+                    continue;
+                }
+
                 Flower plant = plot.getPlantedFlower();
-                
+
                 if (!plot.isWatered()) {
                     plot.setWatered(true);
                     plot.setConsecutiveDaysWithoutWater(0);
                     wateredCount++;
                 }
-                
+
                 double currentDurability = plant.getDurability();
                 plant.setDurability(currentDurability - 10);
                 damagedCount++;
             }
         }
-        
-        if (wateredCount > 0) {
-            player.addJournalEntry("[Storm] A thunderstorm watered " + wateredCount + 
-                    (wateredCount == 1 ? " plant" : " plants") + " but damaged " + damagedCount + (damagedCount == 1 ? " plant" : " plants") + "!");
+
+        if (damagedCount > 0 || protectedCount > 0) {
+            player.addJournalEntry("[Storm] Thunderstorm watered " + wateredCount +
+                    (wateredCount == 1 ? " plant" : " plants") + " and damaged " + damagedCount +
+                    (damagedCount == 1 ? " plant" : " plants") +
+                    (protectedCount > 0 ? "; greenhouse shielded " + protectedCount + "." : "!"));
         }
     }
-    
+
     /**
      * Earthquake: All plants lose 90% durability
      */
     private static void applyEarthquakeEffects(Player1 player) {
         int affectedPlants = 0;
-        
-        for (gardenPlot plot : player.getGardenPlots()) {
+        int protectedPlants = 0;
+
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
             if (plot.isOccupied()) {
+                if (isPlantProtectedByGreenhouse(player, i)) {
+                    protectedPlants++;
+                    continue;
+                }
+
                 Flower plant = plot.getPlantedFlower();
                 double currentDurability = plant.getDurability();
                 double durabilityLoss = currentDurability * 0.9;
@@ -253,42 +280,52 @@ public class WeatherSystem {
                 affectedPlants++;
             }
         }
-        
-        if (affectedPlants > 0) {
-            player.addJournalEntry("[Earthquake] An earthquake struck! All " + affectedPlants + 
-                    (affectedPlants == 1 ? " plant" : " plants") + " severely damaged (90% durability lost)!");
+
+        if (affectedPlants > 0 || protectedPlants > 0) {
+            player.addJournalEntry("[Earthquake] An earthquake struck! " + affectedPlants +
+                    (affectedPlants == 1 ? " plant was" : " plants were") + " severely damaged" +
+                    (protectedPlants > 0 ? ", while greenhouse protected " + protectedPlants + "." : "!"));
         }
     }
-    
+
     /**
      * Hurricane: All plants watered, -50 durability to all plants
      */
     private static void applyHurricaneEffects(Player1 player) {
         int wateredCount = 0;
         int damagedCount = 0;
-        
-        for (gardenPlot plot : player.getGardenPlots()) {
+        int protectedCount = 0;
+
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
             if (plot.isOccupied()) {
+                if (isPlantProtectedByGreenhouse(player, i)) {
+                    protectedCount++;
+                    continue;
+                }
+
                 Flower plant = plot.getPlantedFlower();
-                
+
                 if (!plot.isWatered()) {
                     plot.setWatered(true);
                     plot.setConsecutiveDaysWithoutWater(0);
                     wateredCount++;
                 }
-                
+
                 double currentDurability = plant.getDurability();
                 plant.setDurability(currentDurability - 50);
                 damagedCount++;
             }
         }
-        
-        if (wateredCount > 0) {
-            player.addJournalEntry("[Hurricane] A hurricane watered " + wateredCount + 
-                    (wateredCount == 1 ? " plant" : " plants") + " but heavily damaged " + damagedCount + (damagedCount == 1 ? " plant" : " plants") + " (50 durability)!");
+
+        if (damagedCount > 0 || protectedCount > 0) {
+            player.addJournalEntry("[Hurricane] Hurricane watered " + wateredCount +
+                    (wateredCount == 1 ? " plant" : " plants") + " and heavily damaged " + damagedCount +
+                    (damagedCount == 1 ? " plant" : " plants") +
+                    (protectedCount > 0 ? "; greenhouse shielded " + protectedCount + "." : "!"));
         }
     }
-    
+
     /**
      * Mole Infestation: One random unprotected plant is unearthed
      * - If in flower pot: Protected, moles can't reach
@@ -299,8 +336,9 @@ public class WeatherSystem {
         List<gardenPlot> vulnerablePlots = new ArrayList<>();
         
         // Find all occupied regular plots (not flower pots)
-        for (gardenPlot plot : player.getGardenPlots()) {
-            if (plot.isOccupied() && !plot.isFlowerPot()) {
+        for (int i = 0; i < player.getGardenPlots().size(); i++) {
+            gardenPlot plot = player.getGardenPlots().get(i);
+            if (plot.isOccupied() && !plot.isFlowerPot() && !isPlantProtectedByGreenhouse(player, i)) {
                 vulnerablePlots.add(plot);
             }
         }
@@ -438,7 +476,7 @@ public class WeatherSystem {
             case SNOW:
                 return "[Snow] Snow blanketed the garden overnight.\n" +
                        "Weeds were prevented from growing, but exposed plants lost durability.\n" +
-                       "(Flower pots were protected from the cold)";
+                       "(Flower pots and greenhouse-covered plants were protected)";
                 
             case THUNDERSTORM:
                 return "[Storm] A fierce thunderstorm rolled through!\n" +
@@ -458,7 +496,7 @@ public class WeatherSystem {
             case MOLE_INFESTATION:
                 return "[Moles] A mole has been busy in your garden!\n" +
                        "One of your plants has been unearthed.\n" +
-                       "(Flower pots are safe from moles)";
+                       "(Flower pots and greenhouse-covered plants are safe from moles)";
                 
             case FAIRY_VISIT:
                 return "[Fairy] The fairies visited your garden during the night!\n" +
@@ -500,12 +538,34 @@ public class WeatherSystem {
     
     /**
      * Checks if a specific plot is protected from weather
-     * Currently only flower pots, future: greenhouses
+     * Flower pots are inherently protected from some weather events
      */
     public static boolean isPlotProtected(gardenPlot plot) {
         return plot.isFlowerPot();
     }
     
+
+    private static boolean isPlantProtectedByGreenhouse(Player1 player, int plotIndex) {
+        if (player.getGreenhouseCount() <= 0 || plotIndex < 0 || plotIndex >= player.getGardenPlots().size()) {
+            return false;
+        }
+
+        int protectionCapacity = player.getGreenhouseProtectionCapacity();
+        if (protectionCapacity <= 0) {
+            return false;
+        }
+
+        int occupiedPlantsSeen = 0;
+        for (int i = 0; i <= plotIndex; i++) {
+            gardenPlot indexedPlot = player.getGardenPlots().get(i);
+            if (indexedPlot.isOccupied()) {
+                occupiedPlantsSeen++;
+            }
+        }
+
+        return player.getGardenPlots().get(plotIndex).isOccupied() && occupiedPlantsSeen <= protectionCapacity;
+    }
+
     /**
      * Resets weather state (for save/load compatibility)
      */

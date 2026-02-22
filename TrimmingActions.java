@@ -65,12 +65,17 @@ public class TrimmingActions {
             return;
         }
 
+        if (player.hasBuzzsaw()) {
+            trimAllPlants(player, trimmablePlotIndices);
+            return;
+        }
+
         // Display garden with trimmable plants
         displayTrimmableGarden(player, trimmablePlotIndices);
 
         // Ask which plot to trim
         int plotChoice = selectPlotToTrim(player, trimmablePlotIndices, scanner);
-        
+
         if (plotChoice == -1) {
             System.out.println("Trimming cancelled.");
             return;
@@ -200,47 +205,78 @@ public class TrimmingActions {
      * @param plotIndex The 0-based index of the plot to trim
      */
     private static void trimPlant(Player1 player, int plotIndex) {
-        gardenPlot selectedPlot = player.getGardenPlots().get(plotIndex);
-        Flower plant = selectedPlot.getPlantedFlower();
-        String stage = plant.getGrowthStage();
-        String plantName = plant.getName();
-        
-        // Use energy
+        if (player.getNRG() < 1) {
+            System.out.println("You do not have enough NRG to trim.");
+            return;
+        }
         player.setNRG(player.getNRG() - 1);
-        
-        System.out.println("\nYou carefully trim the " + plantName + "...");
-        
-        switch (stage) {
-            case "Bloomed":
-                trimBloomedPlant(player, plant, plantName);
-                break;
-                
-            case "Matured":
-                trimMaturedPlant(player, plant, plantName);
-                break;
-                
-            case "Mutated":
-                trimMutatedPlant(player, plant, plantName);
-                break;
-                
-            case "Withered":
-                trimWitheredPlant(player, selectedPlot, plant, plantName);
-                break;
-                
-            default:
-                System.out.println("This plant can't be trimmed right now.");
-                return;
-        }
-        
-        // Mark this plot as trimmed for today (unless it was withered and removed)
-        if (!stage.equals("Withered")) {
-            trimmedPlotsToday.add(plotIndex);
-        }
-        
+        executeTrim(player, plotIndex, true);
         System.out.println("You used 1 NRG. Remaining NRG: " + player.getNRG());
         Journal.saveGame(player);
     }
     
+
+    private static void trimAllPlants(Player1 player, List<Integer> trimmablePlotIndices) {
+        int individualCost = trimmablePlotIndices.size();
+        int buzzsawCost = (int) Math.ceil(individualCost * 0.5);
+
+        if (player.getNRG() < buzzsawCost) {
+            System.out.println("❌ Not enough NRG for Trim All. Need " + buzzsawCost + ", have " + player.getNRG());
+            return;
+        }
+
+        System.out.println("\n🪚 Buzzsaw engaged! Trimming all eligible plants...");
+        player.setNRG(player.getNRG() - buzzsawCost);
+
+        int trimmedCount = 0;
+        List<Integer> toTrim = new ArrayList<>(trimmablePlotIndices);
+        for (int plotIndex : toTrim) {
+            if (executeTrim(player, plotIndex, false)) {
+                trimmedCount++;
+            }
+        }
+
+        System.out.println("✅ Trimmed " + trimmedCount + " plants for " + buzzsawCost + " NRG (50% bulk cost).");
+        System.out.println("Remaining NRG: " + player.getNRG());
+        Journal.addJournalEntry(player, "Used buzzsaw to trim all eligible plants (" + trimmedCount + ").");
+        Journal.saveGame(player);
+    }
+
+    private static boolean executeTrim(Player1 player, int plotIndex, boolean verboseHeader) {
+        gardenPlot selectedPlot = player.getGardenPlots().get(plotIndex);
+        if (!selectedPlot.isOccupied()) {
+            return false;
+        }
+
+        Flower plant = selectedPlot.getPlantedFlower();
+        String stage = plant.getGrowthStage();
+        String plantName = plant.getName();
+
+        if (verboseHeader) {
+            System.out.println("\nYou carefully trim the " + plantName + "...");
+        }
+
+        switch (stage) {
+            case "Bloomed":
+                trimBloomedPlant(player, plant, plantName);
+                trimmedPlotsToday.add(plotIndex);
+                return true;
+            case "Matured":
+                trimMaturedPlant(player, plant, plantName);
+                trimmedPlotsToday.add(plotIndex);
+                return true;
+            case "Mutated":
+                trimMutatedPlant(player, plant, plantName);
+                trimmedPlotsToday.add(plotIndex);
+                return true;
+            case "Withered":
+                trimWitheredPlant(player, selectedPlot, plant, plantName);
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /**
      * Handles trimming a bloomed plant (ONLY stage that increases durability)
      * @param player The player
@@ -314,7 +350,15 @@ public class TrimmingActions {
         System.out.println("   You harvested " + flowerCount + " bloomed " + plantName + " flowers!");
         System.out.println("   (The mutated plant remains in the ground)");
         System.out.println("   🔮 Mutated plants don't gain durability from trimming.");
-        
+
+        if (player.hasSeedStartingTray()) {
+            Flower seed = FlowerRegistry.createSeed(plantName);
+            if (seed != null) {
+                player.addToInventory(seed);
+                System.out.println("   🌱 Seed Starting Tray produced 1 " + plantName + " seed.");
+            }
+        }
+
         Journal.addJournalEntry(player, "Trimmed a mutated " + plantName + " and harvested " + 
                               flowerCount + " bloomed flowers!");
     }
@@ -335,7 +379,15 @@ public class TrimmingActions {
         System.out.println("🥀 You trim away the withered " + plantName + ".");
         System.out.println("   The plant has been removed and added to your inventory.");
         System.out.println("   💡 Trimming withered plants is the same as harvesting them.");
-        
+
+        if (player.hasSeedStartingTray()) {
+            Flower seed = FlowerRegistry.createSeed(plantName);
+            if (seed != null) {
+                player.addToInventory(seed);
+                System.out.println("   🌱 Seed Starting Tray produced 1 " + plantName + " seed.");
+            }
+        }
+
         Journal.addJournalEntry(player, "Trimmed (harvested) a withered " + plantName + ".");
     }
 }

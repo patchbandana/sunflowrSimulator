@@ -387,19 +387,23 @@ public class gardenPlot {
         // Growth logic
         String currentStage = plantedFlower.getGrowthStage();
         int daysPlanted = plantedFlower.getDaysPlanted();
+        int effectiveDaysPlanted = daysPlanted;
+        if (player != null && player.hasGrowLight()) {
+            effectiveDaysPlanted = daysPlanted * 2;
+        }
         boolean didGrow = false;
         
         if (shouldGrow) {
-            if (currentStage.equals("Seed") && daysPlanted >= 3) {
+            if (currentStage.equals("Seed") && effectiveDaysPlanted >= 3) {
                 plantedFlower.setGrowthStage("Seedling");
                 didGrow = true;
-            } else if (currentStage.equals("Seedling") && daysPlanted >= 7) {
+            } else if (currentStage.equals("Seedling") && effectiveDaysPlanted >= 7) {
                 plantedFlower.setGrowthStage("Bloomed");
                 didGrow = true;
-            } else if (currentStage.equals("Bloomed") && daysPlanted >= 12) {
+            } else if (currentStage.equals("Bloomed") && effectiveDaysPlanted >= 12) {
                 plantedFlower.setGrowthStage("Matured");
                 didGrow = true;
-            } else if (currentStage.equals("Matured") && daysPlanted >= 20) {
+            } else if (currentStage.equals("Matured") && effectiveDaysPlanted >= 20) {
                 // ENHANCED: Soil quality affects both mutation and withering
                 
                 // Get base mutation chance from CSV

@@ -351,6 +351,15 @@ public class GardenCheckActions {
                 " (" + harvestedFlower.getGrowthStage() + ").");
         System.out.println("It has been added to your inventory.");
 
+        if (player.hasSeedStartingTray() &&
+                (growthStage.equals("Withered") || growthStage.equals("Mutated"))) {
+            Flower seed = FlowerRegistry.createSeed(harvestedFlower.getName());
+            if (seed != null) {
+                player.addToInventory(seed);
+                System.out.println("🌱 Seed Starting Tray produced 1 " + harvestedFlower.getName() + " seed.");
+            }
+        }
+
         player.setNRG(player.getNRG() - 2);
         System.out.println("You used 2 NRG. Remaining NRG: " + player.getNRG());
         Journal.addJournalEntry(player, "Harvested a " + harvestedFlower.getName() + 
