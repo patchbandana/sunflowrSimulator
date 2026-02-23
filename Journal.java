@@ -63,6 +63,14 @@ public class Journal {
 			writer.write("HasMulcher=" + player.hasMulcher() + "\n");
 			writer.write("MulcherDaysRemaining=" + player.getMulcherDaysRemaining() + "\n");
 			writer.write("HasSprinklerSystem=" + player.hasSprinklerSystem() + "\n");
+			writer.write("GreenhouseCount=" + player.getGreenhouseCount() + "\n");
+			writer.write("HasDripIrrigationLines=" + player.hasDripIrrigationLines() + "\n");
+			writer.write("HasGrowLight=" + player.hasGrowLight() + "\n");
+			writer.write("HasSeedStartingTray=" + player.hasSeedStartingTray() + "\n");
+			writer.write("HasHeatLamp=" + player.hasHeatLamp() + "\n");
+			writer.write("HasBuzzsaw=" + player.hasBuzzsaw() + "\n");
+			writer.write("HasCraftedMantle=" + player.hasCraftedMantle() + "\n");
+			writer.write("HasPlacedMantle=" + player.hasPlacedMantle() + "\n");
 
 			LocalDateTime now = LocalDateTime.now();
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -205,6 +213,32 @@ public class Journal {
 				writer.write("\n");
 			}
 
+			writer.write("[MANTLE_DISPLAY]\n");
+			if (player.hasPlacedMantle() && player.getPlacedMantle() != null) {
+				List<Bouquet> displayed = player.getPlacedMantle().getDisplayedBouquets();
+				writer.write("DisplayedCount=" + displayed.size() + "\n");
+				for (int i = 0; i < displayed.size(); i++) {
+					Bouquet bouquet = displayed.get(i);
+					writer.write("MantleBouquet=" + i + "," + bouquet.getFlowerCount() + "," + bouquet.getDayCreated());
+					if (bouquet.hasCustomName()) {
+						writer.write("," + bouquet.getCustomName());
+					}
+					writer.write("\n");
+					for (int f = 0; f < bouquet.getFlowers().size(); f++) {
+						Flower flower = bouquet.getFlowers().get(f);
+						writer.write("MantleFlower=" + i + "," + f + "," + flower.getName() + "," +
+								flower.getGrowthStage() + "," + flower.getDaysPlanted() + "," +
+								flower.getDurability() + "," + flower.getCost());
+						if (flower instanceof FlowerInstance) {
+							writer.write("," + ((FlowerInstance) flower).getNRGRestored());
+						}
+						writer.write("\n");
+					}
+				}
+			} else {
+				writer.write("DisplayedCount=0\n");
+			}
+
 			// CRITICAL FIX: Enforce 100-entry limit BEFORE saving
 			List<String> allEntries = player.getJournalEntries();
 			if (allEntries.size() > MAX_ENTRIES) {
@@ -274,6 +308,9 @@ public class Journal {
 		boolean recognitionBonusApplied = false;
 		String auctionBouquetName = null;
 		int auctionBouquetDayCreated = -1;
+		Map<Integer, List<Flower>> mantleFlowersByBouquet = new HashMap<>();
+		Map<Integer, String> mantleBouquetNames = new HashMap<>();
+		Map<Integer, Integer> mantleBouquetDays = new HashMap<>();
 
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8))) {
@@ -294,6 +331,21 @@ public class Journal {
 						String name = line.substring(5);
 						player = new Player1(name);
 					} else if (player != null) {
+				if (player.hasPlacedMantle()) {
+					Mantle mantle = player.getPlacedMantle();
+					List<Integer> keys = new ArrayList<>(mantleFlowersByBouquet.keySet());
+					Collections.sort(keys);
+					for (Integer idx : keys) {
+						List<Flower> flowers = mantleFlowersByBouquet.get(idx);
+						if (flowers != null && !flowers.isEmpty()) {
+							String cname = mantleBouquetNames.get(idx);
+							int d = mantleBouquetDays.getOrDefault(idx, player.getDay());
+							mantle.addBouquet(new Bouquet(flowers, cname, d));
+						}
+					}
+				}
+
+
 						if (line.startsWith("NRG=")) {
 							player.setNRG(Integer.parseInt(line.substring(4)));
 						} else if (line.startsWith("Credits=")) {
@@ -314,6 +366,24 @@ public class Journal {
 							player.setMulcherDaysRemaining(Integer.parseInt(line.substring(21)));
 						} else if (line.startsWith("HasSprinklerSystem=")) {
 							player.setHasSprinklerSystem(Boolean.parseBoolean(line.substring(19)));
+						} else if (line.startsWith("GreenhouseCount=")) {
+							player.setGreenhouseCount(Integer.parseInt(line.substring(16)));
+						} else if (line.startsWith("HasDripIrrigationLines=")) {
+							player.setHasDripIrrigationLines(Boolean.parseBoolean(line.substring(23)));
+						} else if (line.startsWith("HasGrowLight=")) {
+							player.setHasGrowLight(Boolean.parseBoolean(line.substring(13)));
+						} else if (line.startsWith("HasSeedStartingTray=")) {
+							player.setHasSeedStartingTray(Boolean.parseBoolean(line.substring(20)));
+						} else if (line.startsWith("HasHeatLamp=")) {
+							player.setHasHeatLamp(Boolean.parseBoolean(line.substring(12)));
+						} else if (line.startsWith("HasBuzzsaw=")) {
+							player.setHasBuzzsaw(Boolean.parseBoolean(line.substring(11)));
+						} else if (line.startsWith("HasCraftedMantle=")) {
+							player.setHasCraftedMantle(Boolean.parseBoolean(line.substring(16)));
+						} else if (line.startsWith("HasPlacedMantle=")) {
+							if (Boolean.parseBoolean(line.substring(16))) {
+								player.setPlacedMantle(new Mantle());
+							}
 						}
 					}
 				} else if (section.equals("UNLOCKED_DREAMS") && line.startsWith("Dream=")) {
@@ -393,6 +463,33 @@ public class Journal {
 						knownBouquetCompositions.put(signature, knownName);
 						if (parsedHighScore != null) {
 							bouquetHighScores.put(signature, parsedHighScore);
+						}
+					}
+				
+				} else if (section.equals("MANTLE_DISPLAY") && player != null) {
+					if (line.startsWith("MantleBouquet=")) {
+						String[] parts = line.substring(14).split(",");
+						if (parts.length >= 3) {
+							int bouquetIndex = Integer.parseInt(parts[0]);
+							int dayCreated = Integer.parseInt(parts[2]);
+							String customName = (parts.length >= 4) ? parts[3] : null;
+							mantleBouquetDays.put(bouquetIndex, dayCreated);
+							if (customName != null && !customName.isEmpty()) {
+								mantleBouquetNames.put(bouquetIndex, customName);
+							}
+						}
+					} else if (line.startsWith("MantleFlower=")) {
+						String[] flowerData = line.substring(12).split(",");
+						if (flowerData.length >= 7) {
+							int bouquetIndex = Integer.parseInt(flowerData[0]);
+							String name = flowerData[2];
+							String stage = flowerData[3];
+							int daysPlanted = Integer.parseInt(flowerData[4]);
+							double durability = Double.parseDouble(flowerData[5]);
+							double cost = Double.parseDouble(flowerData[6]);
+							int nrgRestored = (flowerData.length >= 8) ? Integer.parseInt(flowerData[7]) : 1;
+							FlowerInstance flower = new FlowerInstance(name, stage, daysPlanted, durability, nrgRestored, cost);
+							mantleFlowersByBouquet.computeIfAbsent(bouquetIndex, k -> new ArrayList<>()).add(flower);
 						}
 					}
 				} else if (section.equals("GARDEN_PLOTS")) {
@@ -503,6 +600,20 @@ public class Journal {
 			}
 
 			if (player != null) {
+				if (player.hasPlacedMantle()) {
+					Mantle mantle = player.getPlacedMantle();
+					List<Integer> keys = new ArrayList<>(mantleFlowersByBouquet.keySet());
+					Collections.sort(keys);
+					for (Integer idx : keys) {
+						List<Flower> flowers = mantleFlowersByBouquet.get(idx);
+						if (flowers != null && !flowers.isEmpty()) {
+							String cname = mantleBouquetNames.get(idx);
+							int d = mantleBouquetDays.getOrDefault(idx, player.getDay());
+							mantle.addBouquet(new Bouquet(flowers, cname, d));
+						}
+					}
+				}
+
 				if (!knownBouquetCompositions.isEmpty()) {
 					player.setKnownBouquetCompositions(knownBouquetCompositions);
 				}
@@ -531,6 +642,20 @@ public class Journal {
 			}
 
 			if (player != null) {
+				if (player.hasPlacedMantle()) {
+					Mantle mantle = player.getPlacedMantle();
+					List<Integer> keys = new ArrayList<>(mantleFlowersByBouquet.keySet());
+					Collections.sort(keys);
+					for (Integer idx : keys) {
+						List<Flower> flowers = mantleFlowersByBouquet.get(idx);
+						if (flowers != null && !flowers.isEmpty()) {
+							String cname = mantleBouquetNames.get(idx);
+							int d = mantleBouquetDays.getOrDefault(idx, player.getDay());
+							mantle.addBouquet(new Bouquet(flowers, cname, d));
+						}
+					}
+				}
+
 				//System.out.println("[OK] Story loaded successfully!");
 			}
 

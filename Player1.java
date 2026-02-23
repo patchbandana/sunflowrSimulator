@@ -39,6 +39,20 @@ public class Player1 {
 	private boolean hasMulcher;
 	private int mulcherDaysRemaining; // Days of 0.25x weed growth remaining
 	private boolean hasSprinklerSystem;
+	
+	// Greenhouse structures
+	private int greenhouseCount;
+
+	// Greenhouse-tier upgrades
+	private boolean hasDripIrrigationLines;
+	private boolean hasGrowLight;
+	private boolean hasSeedStartingTray;
+	private boolean hasHeatLamp;
+	private boolean hasBuzzsaw;
+
+	// Mantle progression
+	private boolean hasCraftedMantle;
+	private Mantle placedMantle;
 
 	public Player1(String name) {
 		this.name = name;
@@ -66,6 +80,14 @@ public class Player1 {
 		this.hasMulcher = false;
 	    this.mulcherDaysRemaining = 0;
 	    this.hasSprinklerSystem = false;
+	    this.greenhouseCount = 0;
+	    this.hasDripIrrigationLines = false;
+	    this.hasGrowLight = false;
+	    this.hasSeedStartingTray = false;
+	    this.hasHeatLamp = false;
+	    this.hasBuzzsaw = false;
+	    this.hasCraftedMantle = false;
+	    this.placedMantle = null;
 	}
 
 	public void addToInventory(Object item) {
@@ -244,6 +266,11 @@ public class Player1 {
 			System.out.println("Plot #" + (i+1) + ":");
 			System.out.println(gardenPlots.get(i));
 		}
+
+		if (hasPlacedMantle()) {
+			System.out.println();
+			System.out.println(placedMantle.getDisplaySummary());
+		}
 	}
 
 	public String getName() {
@@ -408,6 +435,124 @@ public class Player1 {
 	    this.hasSprinklerSystem = true;
 	}
 
+	public int getGreenhouseCount() {
+		return greenhouseCount;
+	}
+
+	public void setGreenhouseCount(int greenhouseCount) {
+		this.greenhouseCount = Math.max(0, greenhouseCount);
+	}
+
+	public void buildGreenhouse() {
+		this.greenhouseCount++;
+	}
+
+	public int getGreenhouseProtectionCapacity() {
+		return greenhouseCount * 20;
+	}
+
+
+	public boolean hasDripIrrigationLines() {
+		return hasDripIrrigationLines;
+	}
+
+	public void installDripIrrigationLines() {
+		this.hasDripIrrigationLines = true;
+	}
+
+	public void setHasDripIrrigationLines(boolean hasDripIrrigationLines) {
+		this.hasDripIrrigationLines = hasDripIrrigationLines;
+	}
+
+	public boolean hasGrowLight() {
+		return hasGrowLight;
+	}
+
+	public void installGrowLight() {
+		this.hasGrowLight = true;
+	}
+
+	public void setHasGrowLight(boolean hasGrowLight) {
+		this.hasGrowLight = hasGrowLight;
+	}
+
+	public boolean hasSeedStartingTray() {
+		return hasSeedStartingTray;
+	}
+
+	public void installSeedStartingTray() {
+		this.hasSeedStartingTray = true;
+	}
+
+	public void setHasSeedStartingTray(boolean hasSeedStartingTray) {
+		this.hasSeedStartingTray = hasSeedStartingTray;
+	}
+
+	public boolean hasHeatLamp() {
+		return hasHeatLamp;
+	}
+
+	public void installHeatLamp() {
+		this.hasHeatLamp = true;
+	}
+
+	public void setHasHeatLamp(boolean hasHeatLamp) {
+		this.hasHeatLamp = hasHeatLamp;
+	}
+
+	public boolean hasBuzzsaw() {
+		return hasBuzzsaw;
+	}
+
+	public void installBuzzsaw() {
+		this.hasBuzzsaw = true;
+	}
+
+	public void setHasBuzzsaw(boolean hasBuzzsaw) {
+		this.hasBuzzsaw = hasBuzzsaw;
+	}
+
+
+
+	public boolean hasCraftedMantle() {
+		return hasCraftedMantle;
+	}
+
+	public void setHasCraftedMantle(boolean hasCraftedMantle) {
+		this.hasCraftedMantle = hasCraftedMantle;
+	}
+
+	public void craftMantle() {
+		this.hasCraftedMantle = true;
+	}
+
+	public Mantle getPlacedMantle() {
+		return placedMantle;
+	}
+
+	public void setPlacedMantle(Mantle placedMantle) {
+		this.placedMantle = placedMantle;
+	}
+
+	public boolean hasPlacedMantle() {
+		return placedMantle != null;
+	}
+
+
+
+	public boolean hasMantleInInventory() {
+		for (Object item : inventory) {
+			if (item instanceof Mantle) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean hasAnyMantleOwned() {
+		return hasPlacedMantle() || hasMantleInInventory();
+	}
+
 	public void advanceDay() {
 		this.day++;
 		this.nrg = 10;
@@ -499,6 +644,17 @@ public class Player1 {
 			}
 		}
 
+		if (hasDripIrrigationLines) {
+			autoWaterGreenhouseCoveredPlants();
+			needsWater = false;
+			for (gardenPlot plot : gardenPlots) {
+				if (plot.isOccupied() && !plot.isWatered()) {
+					needsWater = true;
+					break;
+				}
+			}
+		}
+
 		if (needsWater) {
 			addJournalEntry("💧 Your plants need watering!");
 		}
@@ -506,4 +662,25 @@ public class Player1 {
 			addJournalEntry("🌿 Some weeds appeared in the garden.");
 		}
 	}
+
+	private void autoWaterGreenhouseCoveredPlants() {
+		int protectionCapacity = getGreenhouseProtectionCapacity();
+		if (protectionCapacity <= 0) {
+			return;
+		}
+
+		int occupiedCount = 0;
+		for (gardenPlot plot : gardenPlots) {
+			if (!plot.isOccupied()) {
+				continue;
+			}
+
+			occupiedCount++;
+			if (occupiedCount <= protectionCapacity) {
+				plot.setWatered(true);
+				plot.setConsecutiveDaysWithoutWater(0);
+			}
+		}
+	}
+
 }

@@ -1,6 +1,6 @@
 /* BuildingActions.java
  * Handles all building-related actions including flower pot crafting and garden plot expansion
- * Updated: November 23, 2025 - Added compost bin access
+ * Updated: November 26, 2025 - Added greenhouse construction and scaling costs
  */
 
 import java.util.Scanner;
@@ -83,6 +83,81 @@ public class BuildingActions {
 	            }
 	        }
 	        
+	        if (player.hasCompostBin()) {
+	            if (buildChoice.equals(String.valueOf(currentOption))) {
+	                buildGreenhouse(player, scanner);
+	                currentOption++;
+	                continue;
+	            }
+	            currentOption++;
+	        }
+
+	        if (player.getGreenhouseCount() > 0) {
+	            if (!player.hasDripIrrigationLines()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installDripIrrigationLines(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+
+	            if (!player.hasGrowLight()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installGrowLight(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+
+	            if (!player.hasSeedStartingTray()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installSeedStartingTray(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+
+	            if (!player.hasHeatLamp()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installHeatLamp(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+
+	            if (!player.hasBuzzsaw()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    installBuzzsaw(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+
+	
+            if (!player.hasAnyMantleOwned()) {
+                if (buildChoice.equals(String.valueOf(currentOption))) {
+                    buildMantle(player, scanner);
+                    currentOption++;
+                    continue;
+                }
+                currentOption++;
+            }
+
+            if (player.hasHeatLamp()) {
+	                if (buildChoice.equals(String.valueOf(currentOption))) {
+	                    useHeatLamp(player, scanner);
+	                    currentOption++;
+	                    continue;
+	                }
+	                currentOption++;
+	            }
+	        }
+
 	        // Return option (always last)
 	        if (buildChoice.equals(String.valueOf(currentOption))) {
 	            inBuildMenu = false;
@@ -136,7 +211,12 @@ public class BuildingActions {
 	            System.out.println("  ❌ Sprinkler system not installed");
 	        }
 	    }
-	    
+
+	    System.out.println("🏡 Greenhouse Status:");
+	    System.out.println("  • Greenhouses built: " + player.getGreenhouseCount());
+	    System.out.println("  • Weather protection capacity: " + player.getGreenhouseProtectionCapacity() + " plants");
+    System.out.println("  • Mantle: " + (player.hasPlacedMantle() ? "Placed in garden" : (player.hasMantleInInventory() ? "Crafted (in backpack)" : "Not built")));
+	
 	    System.out.println();
 
 	    int optionNum = 1;
@@ -174,6 +254,44 @@ public class BuildingActions {
 	        
 	        if (!player.hasSprinklerSystem()) {
 	            System.out.println(optionNum + ": Install Sprinkler System (20 credits, 20 NRG)");
+	            optionNum++;
+	        }
+	    }
+
+	    if (player.hasCompostBin()) {
+	        int[] greenhouseCosts = calculateGreenhouseCost(player.getGreenhouseCount());
+	        System.out.println(optionNum + ": Build Greenhouse (" + greenhouseCosts[1] + " credits, " + greenhouseCosts[0] + " NRG)");
+	        optionNum++;
+	    }
+
+	    if (player.getGreenhouseCount() > 0) {
+	        System.out.println("\n🌿 Greenhouse Upgrades:");
+	        if (!player.hasDripIrrigationLines()) {
+	            System.out.println(optionNum + ": Install Drip Irrigation Lines (1600 credits, 20 NRG)");
+	            optionNum++;
+	        }
+	        if (!player.hasGrowLight()) {
+	            System.out.println(optionNum + ": Install Grow Light (1700 credits, 20 NRG)");
+	            optionNum++;
+	        }
+	        if (!player.hasSeedStartingTray()) {
+	            System.out.println(optionNum + ": Install Seed Starting Tray (1500 credits, 18 NRG)");
+	            optionNum++;
+	        }
+	        if (!player.hasHeatLamp()) {
+	            System.out.println(optionNum + ": Install Heat Lamp (1650 credits, 20 NRG)");
+	            optionNum++;
+	        }
+	        if (!player.hasBuzzsaw()) {
+	            System.out.println(optionNum + ": Install Buzzsaw (1750 credits, 22 NRG)");
+	            optionNum++;
+	        }
+        if (!player.hasAnyMantleOwned()) {
+            System.out.println(optionNum + ": Build Mantle (4883 credits, 62 NRG)");
+            optionNum++;
+        }
+	        if (player.hasHeatLamp()) {
+	            System.out.println(optionNum + ": Use Heat Lamp (instantly wither one planted flower)");
 	            optionNum++;
 	        }
 	    }
@@ -541,4 +659,235 @@ public class BuildingActions {
 	        System.out.println("Installation cancelled.");
 	    }
 	}
+
+
+	private static int[] calculateGreenhouseCost(int currentGreenhouseCount) {
+		int nextGreenhouseNumber = currentGreenhouseCount + 1;
+		double scalingMultiplier = Math.pow(1.25, nextGreenhouseNumber - 1);
+		int nrgCost = (int) Math.ceil(25 * scalingMultiplier);
+		int creditCost = (int) Math.ceil(2000 * scalingMultiplier);
+		return new int[]{nrgCost, creditCost};
+	}
+
+	private static void buildGreenhouse(Player1 player, Scanner scanner) {
+		int nextGreenhouse = player.getGreenhouseCount() + 1;
+		int[] costs = calculateGreenhouseCost(player.getGreenhouseCount());
+		int greenhouseNRGCost = costs[0];
+		int greenhouseCreditCost = costs[1];
+
+		System.out.println("\n🏡 Greenhouse Construction 🏡");
+		System.out.println("Cost: " + greenhouseCreditCost + " credits, " + greenhouseNRGCost + " NRG");
+		System.out.println();
+		System.out.println("The greenhouse protects your FIRST 20 plants from weather hazards:");
+		System.out.println("  ✓ Blocks snow damage");
+		System.out.println("  ✓ Blocks moles");
+		System.out.println("  ✓ Blocks rain effects");
+		System.out.println("  ✓ Fairies can still enter (beneficial blessings)");
+		System.out.println();
+		System.out.println("Greenhouse #" + nextGreenhouse + " will protect up to " + (nextGreenhouse * 20) + " plants total.");
+
+		if (player.getCredits() < greenhouseCreditCost) {
+			System.out.println("\n❌ You don't have enough credits! Need " + greenhouseCreditCost + ", have " + player.getCredits());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		if (player.getNRG() < greenhouseNRGCost) {
+			System.out.println("\n❌ You don't have enough energy! Need " + greenhouseNRGCost + " NRG, have " + player.getNRG());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		System.out.print("\nBuild greenhouse #" + nextGreenhouse + "? (yes/no): ");
+		String confirm = scanner.nextLine().toLowerCase();
+
+		if (confirm.equals("yes")) {
+			player.setCredits(player.getCredits() - greenhouseCreditCost);
+			player.setNRG(player.getNRG() - greenhouseNRGCost);
+			player.buildGreenhouse();
+
+			System.out.println("\n✅ Greenhouse #" + nextGreenhouse + " built successfully!");
+			System.out.println("Your first " + player.getGreenhouseProtectionCapacity() + " plants are now weather-protected");
+			System.out.println("(except fairy visits, which can still bless them).");
+			System.out.println();
+			System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+
+			Journal.addJournalEntry(player, "Built greenhouse #" + nextGreenhouse + " to shield plants from weather.");
+			Journal.saveGame(player);
+		} else {
+			System.out.println("Construction cancelled.");
+		}
+	}
+
+
+
+	private static void buildMantle(Player1 player, Scanner scanner) {
+		int mantleCredits = 4883;
+		int mantleNRG = 62;
+
+		System.out.println("\n🏠 Mantle Construction 🏠");
+		System.out.println("Cost: " + mantleCredits + " credits, " + mantleNRG + " NRG");
+		System.out.println("A decorative mantle used to display your bouquet accomplishments.");
+		System.out.println("Place it from your backpack, then showcase custom names, flower stages, and value.");
+
+		if (player.getCredits() < mantleCredits) {
+			System.out.println("❌ You don't have enough credits! Need " + mantleCredits + ", have " + player.getCredits());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+		if (player.getNRG() < mantleNRG) {
+			System.out.println("❌ You don't have enough energy! Need " + mantleNRG + " NRG, have " + player.getNRG());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return;
+		}
+
+		System.out.print("Build the mantle? (yes/no): ");
+		String confirm = scanner.nextLine().toLowerCase();
+		if (!confirm.equals("yes")) {
+			System.out.println("Construction cancelled.");
+			return;
+		}
+
+		player.setCredits(player.getCredits() - mantleCredits);
+		player.setNRG(player.getNRG() - mantleNRG);
+		player.craftMantle();
+		player.addToInventory(new Mantle());
+
+		System.out.println("✅ Mantle built and added to your backpack!");
+		System.out.println("Use it from backpack to place it in your garden and display bouquets.");
+		System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+		Journal.addJournalEntry(player, "Built a mantle to display bouquet achievements.");
+		Journal.saveGame(player);
+	}
+
+
+	private static boolean handleUpgradePurchase(Player1 player, Scanner scanner, String title,
+			int creditCost, int nrgCost, String benefitDescription, Runnable onSuccess, String journalEntry) {
+		System.out.println("\n" + title);
+		System.out.println("Cost: " + creditCost + " credits, " + nrgCost + " NRG");
+		System.out.println(benefitDescription);
+
+		if (player.getCredits() < creditCost) {
+			System.out.println("❌ You don't have enough credits! Need " + creditCost + ", have " + player.getCredits());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return false;
+		}
+		if (player.getNRG() < nrgCost) {
+			System.out.println("❌ You don't have enough energy! Need " + nrgCost + " NRG, have " + player.getNRG());
+			System.out.println("Press Enter to continue...");
+			scanner.nextLine();
+			return false;
+		}
+
+		System.out.print("Install this upgrade? (yes/no): ");
+		String confirm = scanner.nextLine().toLowerCase();
+		if (!confirm.equals("yes")) {
+			System.out.println("Installation cancelled.");
+			return false;
+		}
+
+		player.setCredits(player.getCredits() - creditCost);
+		player.setNRG(player.getNRG() - nrgCost);
+		onSuccess.run();
+		System.out.println("✅ Upgrade installed!");
+		System.out.println("Remaining: " + player.getNRG() + " NRG | " + player.getCredits() + " credits");
+		Journal.addJournalEntry(player, journalEntry);
+		Journal.saveGame(player);
+		return true;
+	}
+
+	private static void installDripIrrigationLines(Player1 player, Scanner scanner) {
+		handleUpgradePurchase(player, scanner,
+				"💧 Drip Irrigation Lines 💧",
+				1600, 20,
+				"Automatically waters greenhouse-covered plants daily, including flower pots.",
+				player::installDripIrrigationLines,
+				"Installed drip irrigation lines in the greenhouse.");
+	}
+
+	private static void installGrowLight(Player1 player, Scanner scanner) {
+		handleUpgradePurchase(player, scanner,
+				"💡 Grow Light 💡",
+				1700, 20,
+				"Doubles growth speed progression without increasing mutation/withering rolls.",
+				player::installGrowLight,
+				"Installed a greenhouse grow light.");
+	}
+
+	private static void installSeedStartingTray(Player1 player, Scanner scanner) {
+		handleUpgradePurchase(player, scanner,
+				"🌱 Seed Starting Tray 🌱",
+				1500, 18,
+				"Harvesting/trimming withered or mutated flowers also yields a seed.",
+				player::installSeedStartingTray,
+				"Installed a seed starting tray.");
+	}
+
+	private static void installHeatLamp(Player1 player, Scanner scanner) {
+		handleUpgradePurchase(player, scanner,
+				"🔥 Heat Lamp 🔥",
+				1650, 20,
+				"Unlocks a build-menu action to instantly wither one planted flower.",
+				player::installHeatLamp,
+				"Installed a controllable heat lamp.");
+	}
+
+	private static void installBuzzsaw(Player1 player, Scanner scanner) {
+		handleUpgradePurchase(player, scanner,
+				"🪚 Buzzsaw 🪚",
+				1750, 22,
+				"Replaces single-plant trimming with Trim All at 50% total NRG cost.",
+				player::installBuzzsaw,
+				"Installed a garden buzzsaw for bulk trimming.");
+	}
+
+	private static void useHeatLamp(Player1 player, Scanner scanner) {
+		if (!player.hasHeatLamp()) {
+			System.out.println("You need to install the heat lamp first.");
+			return;
+		}
+
+		System.out.println("\n🔥 Heat Lamp Control 🔥");
+		System.out.println("Select a planted plot to instantly wither the flower.");
+		for (int i = 0; i < player.getGardenPlots().size(); i++) {
+			gardenPlot plot = player.getGardenPlots().get(i);
+			if (plot.isOccupied()) {
+				Flower flower = plot.getPlantedFlower();
+				System.out.println((i + 1) + ": " + flower.getName() + " (" + flower.getGrowthStage() + ")");
+			}
+		}
+		System.out.print("Plot number (or 0 to cancel): ");
+		int choice;
+		try {
+			choice = Integer.parseInt(scanner.nextLine());
+		} catch (NumberFormatException e) {
+			System.out.println("Invalid input.");
+			return;
+		}
+		if (choice == 0) {
+			System.out.println("Cancelled.");
+			return;
+		}
+		if (choice < 1 || choice > player.getGardenPlots().size()) {
+			System.out.println("Invalid plot number.");
+			return;
+		}
+		gardenPlot targetPlot = player.getGardenPlots().get(choice - 1);
+		if (!targetPlot.isOccupied()) {
+			System.out.println("That plot is empty.");
+			return;
+		}
+		Flower target = targetPlot.getPlantedFlower();
+		target.setGrowthStage("Withered");
+		target.setDurability(0);
+		System.out.println("⚠️ " + target.getName() + " instantly withered.");
+		Journal.addJournalEntry(player, "Used heat lamp to wither a " + target.getName() + ".");
+		Journal.saveGame(player);
+	}
+
 }
