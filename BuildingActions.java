@@ -140,6 +140,7 @@ public class BuildingActions {
 
 	
             if (!player.hasAnyMantleOwned()) {
+            if (!player.hasCraftedMantle()) {
                 if (buildChoice.equals(String.valueOf(currentOption))) {
                     buildMantle(player, scanner);
                     currentOption++;
@@ -149,6 +150,7 @@ public class BuildingActions {
             }
 
             if (player.hasHeatLamp()) {
+	            if (player.hasHeatLamp()) {
 	                if (buildChoice.equals(String.valueOf(currentOption))) {
 	                    useHeatLamp(player, scanner);
 	                    currentOption++;
@@ -216,6 +218,7 @@ public class BuildingActions {
 	    System.out.println("  • Greenhouses built: " + player.getGreenhouseCount());
 	    System.out.println("  • Weather protection capacity: " + player.getGreenhouseProtectionCapacity() + " plants");
     System.out.println("  • Mantle: " + (player.hasPlacedMantle() ? "Placed in garden" : (player.hasMantleInInventory() ? "Crafted (in backpack)" : "Not built")));
+    System.out.println("  • Mantle: " + (player.hasPlacedMantle() ? "Placed in garden" : (player.hasCraftedMantle() ? "Crafted (in backpack)" : "Not built")));
 	
 	    System.out.println();
 
@@ -287,6 +290,7 @@ public class BuildingActions {
 	            optionNum++;
 	        }
         if (!player.hasAnyMantleOwned()) {
+        if (!player.hasCraftedMantle()) {
             System.out.println(optionNum + ": Build Mantle (4883 credits, 62 NRG)");
             optionNum++;
         }
@@ -890,4 +894,7 @@ public class BuildingActions {
 		Journal.saveGame(player);
 	}
 
+}
+}
+}
 }

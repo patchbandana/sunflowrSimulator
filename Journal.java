@@ -382,6 +382,7 @@ public class Journal {
 							player.setHasCraftedMantle(Boolean.parseBoolean(line.substring(16)));
 						} else if (line.startsWith("HasPlacedMantle=")) {
 							if (Boolean.parseBoolean(line.substring(16))) {
+							if (Boolean.parseBoolean(line.substring(15))) {
 								player.setPlacedMantle(new Mantle());
 							}
 						}
