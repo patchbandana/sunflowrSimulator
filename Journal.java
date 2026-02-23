@@ -345,6 +345,7 @@ public class Journal {
 					}
 				}
 
+
 						if (line.startsWith("NRG=")) {
 							player.setNRG(Integer.parseInt(line.substring(4)));
 						} else if (line.startsWith("Credits=")) {
@@ -380,6 +381,7 @@ public class Journal {
 						} else if (line.startsWith("HasCraftedMantle=")) {
 							player.setHasCraftedMantle(Boolean.parseBoolean(line.substring(16)));
 						} else if (line.startsWith("HasPlacedMantle=")) {
+							if (Boolean.parseBoolean(line.substring(16))) {
 							if (Boolean.parseBoolean(line.substring(15))) {
 								player.setPlacedMantle(new Mantle());
 							}

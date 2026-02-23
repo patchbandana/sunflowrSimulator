@@ -538,6 +538,21 @@ public class Player1 {
 		return placedMantle != null;
 	}
 
+
+
+	public boolean hasMantleInInventory() {
+		for (Object item : inventory) {
+			if (item instanceof Mantle) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public boolean hasAnyMantleOwned() {
+		return hasPlacedMantle() || hasMantleInInventory();
+	}
+
 	public void advanceDay() {
 		this.day++;
 		this.nrg = 10;
